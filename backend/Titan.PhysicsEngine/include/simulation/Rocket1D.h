@@ -4,15 +4,20 @@ namespace titan::simulation
 {
     struct RocketState1D
     {
-        double altitude; // m
-        double velocity; // m/s
-        double mass;     // kg
+        double altitude;
+        double velocity;
+        double totalMass;
+        double fuelMass;
     };
 
     class Rocket1D
     {
     public:
-        Rocket1D(double mass, double thrust);
+        Rocket1D(
+            double dryMass,
+            double fuelMass,
+            double burnRate,
+            double exhaustVelocity);
 
         RocketState1D GetState() const;
 
@@ -20,7 +25,11 @@ namespace titan::simulation
 
     private:
         RocketState1D state;
-        double thrust;         // Newtons
-        const double g = 9.81; // m/s²
+
+        double dryMass;
+        double burnRate;        // kg/s
+        double exhaustVelocity; // m/s
+
+        const double g = 9.81;
     };
 }
