@@ -304,8 +304,6 @@ CMakeFiles/TitanPhysicsEngine.dir/src/physics/AtmosphereModel.cpp.o: /home/marco
   /usr/lib/gcc/x86_64-linux-gnu/13/include/stddef.h
 
 CMakeFiles/TitanPhysicsEngine.dir/src/physics/GravityModel.cpp.o: /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/src/physics/GravityModel.cpp \
-  /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/include/core/Constants.h \
-  /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/include/core/Vector3.h \
   /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/include/physics/GravityModel.h \
   /usr/include/alloca.h \
   /usr/include/c++/13/bit \
@@ -413,6 +411,7 @@ CMakeFiles/TitanPhysicsEngine.dir/src/physics/GravityModel.cpp.o: /home/marcos-s
 
 CMakeFiles/TitanPhysicsEngine.dir/src/simulation/Rocket1D.cpp.o: /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/src/simulation/Rocket1D.cpp \
   /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/include/physics/AtmosphereModel.h \
+  /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/include/physics/GravityModel.h \
   /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/include/simulation/Rocket1D.h \
   /usr/include/alloca.h \
   /usr/include/c++/13/algorithm \
@@ -517,8 +516,6 @@ CMakeFiles/TitanPhysicsEngine.dir/src/simulation/Rocket1D.cpp.o: /home/marcos-sm
 /usr/include/c++/13/bits/ranges_algobase.h:
 
 /usr/include/c++/13/algorithm:
-
-/home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/include/core/Vector3.h:
 
 /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/src/physics/GravityModel.cpp:
 
@@ -735,8 +732,6 @@ CMakeFiles/TitanPhysicsEngine.dir/src/simulation/Rocket1D.cpp.o: /home/marcos-sm
 /usr/include/x86_64-linux-gnu/c++/13/bits/gthr.h:
 
 /usr/include/c++/13/bits/basic_ios.tcc:
-
-/home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/include/core/Constants.h:
 
 /usr/include/c++/13/bits/nested_exception.h:
 

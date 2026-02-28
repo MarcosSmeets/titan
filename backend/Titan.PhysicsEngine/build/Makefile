@@ -241,6 +241,30 @@ src/simulation/Rocket1D.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/simulation/Rocket1D.cpp.s
 .PHONY : src/simulation/Rocket1D.cpp.s
 
+src/simulation/Rocket2D.o: src/simulation/Rocket2D.cpp.o
+.PHONY : src/simulation/Rocket2D.o
+
+# target to build an object file
+src/simulation/Rocket2D.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/simulation/Rocket2D.cpp.o
+.PHONY : src/simulation/Rocket2D.cpp.o
+
+src/simulation/Rocket2D.i: src/simulation/Rocket2D.cpp.i
+.PHONY : src/simulation/Rocket2D.i
+
+# target to preprocess a source file
+src/simulation/Rocket2D.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/simulation/Rocket2D.cpp.i
+.PHONY : src/simulation/Rocket2D.cpp.i
+
+src/simulation/Rocket2D.s: src/simulation/Rocket2D.cpp.s
+.PHONY : src/simulation/Rocket2D.s
+
+# target to generate assembly for a file
+src/simulation/Rocket2D.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/simulation/Rocket2D.cpp.s
+.PHONY : src/simulation/Rocket2D.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -263,6 +287,9 @@ help:
 	@echo "... src/simulation/Rocket1D.o"
 	@echo "... src/simulation/Rocket1D.i"
 	@echo "... src/simulation/Rocket1D.s"
+	@echo "... src/simulation/Rocket2D.o"
+	@echo "... src/simulation/Rocket2D.i"
+	@echo "... src/simulation/Rocket2D.s"
 .PHONY : help
 
 

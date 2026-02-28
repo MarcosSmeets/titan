@@ -1,12 +1,14 @@
 #include "simulation/Rocket2D.h"
 #include "physics/AtmosphereModel.h"
 #include "physics/GravityModel.h"
+
 #include <cmath>
 #include <algorithm>
 
 namespace titan::simulation
 {
-    static constexpr double EarthRadius = 6371000.0;
+    static constexpr double EarthRadius = 6371000.0;  // meters
+    static constexpr double EarthMu = 3.986004418e14; // m^3/s^2
 
     Rocket2D::Rocket2D(
         double dryMass,
@@ -15,18 +17,17 @@ namespace titan::simulation
         double exhaustVelocity,
         double dragCoefficient,
         double crossSectionArea,
-        double initialPitchAngleDeg)
+        double gravityTurnStartAltitude)
     {
         this->dryMass = dryMass;
         this->burnRate = burnRate;
         this->exhaustVelocity = exhaustVelocity;
         this->dragCoefficient = dragCoefficient;
         this->crossSectionArea = crossSectionArea;
-
-        pitchAngleRad = initialPitchAngleDeg * M_PI / 180.0;
+        this->gravityTurnStartAltitude = gravityTurnStartAltitude;
 
         state.x = 0.0;
-        state.y = EarthRadius; // start at surface
+        state.y = EarthRadius; // Start at Earth's surface
         state.vx = 0.0;
         state.vy = 0.0;
         state.fuelMass = fuelMass;
@@ -39,8 +40,10 @@ namespace titan::simulation
     }
 
     /*
-        Computes acceleration components (ax, ay)
-        including gravity, thrust and drag.
+        Computes acceleration vector including:
+        - Thrust
+        - Gravity
+        - Atmospheric drag
     */
     void Rocket2D::ComputeAcceleration(
         double x,
@@ -51,6 +54,15 @@ namespace titan::simulation
         double &ax,
         double &ay) const
     {
+        double r = std::sqrt(x * x + y * y);
+        double altitude = r - EarthRadius;
+        double v = std::sqrt(vx * vx + vy * vy);
+
+        /*
+            THRUST VECTOR
+            During early ascent: vertical.
+            After gravityTurnStartAltitude: align with velocity.
+        */
         double thrustX = 0.0;
         double thrustY = 0.0;
 
@@ -58,33 +70,31 @@ namespace titan::simulation
         {
             double thrust = burnRate * exhaustVelocity;
 
-            thrustX = thrust * std::cos(pitchAngleRad);
-            thrustY = thrust * std::sin(pitchAngleRad);
+            double dirX = 0.0;
+            double dirY = 1.0;
+
+            if (altitude >= gravityTurnStartAltitude && v > 0.0)
+            {
+                dirX = vx / v;
+                dirY = vy / v;
+            }
+
+            thrustX = thrust * dirX;
+            thrustY = thrust * dirY;
         }
 
         /*
-            Compute distance from Earth's center.
+            GRAVITY (radial toward Earth's center)
         */
-        double r = std::sqrt(x * x + y * y);
+        double gravity = titan::physics::GravityModel::ComputeGravity(altitude);
 
-        /*
-            Gravity magnitude.
-        */
-        double gravity = titan::physics::GravityModel::ComputeGravity(r - EarthRadius);
-
-        /*
-            Gravity direction (toward center).
-        */
         double gx = -gravity * (x / r);
         double gy = -gravity * (y / r);
 
         /*
-            Atmospheric drag.
+            ATMOSPHERIC DRAG (opposite velocity)
         */
-        double altitude = r - EarthRadius;
         double density = titan::physics::AtmosphereModel::GetDensity(altitude);
-
-        double v = std::sqrt(vx * vx + vy * vy);
 
         double dragX = 0.0;
         double dragY = 0.0;
@@ -99,14 +109,17 @@ namespace titan::simulation
         }
 
         /*
-            Net force divided by mass.
+            Net acceleration
         */
-        ax = (thrustX / mass) + gx + (dragX / mass);
-        ay = (thrustY / mass) + gy + (dragY / mass);
+        ax = (thrustX + dragX) / mass + gx;
+        ay = (thrustY + dragY) / mass + gy;
     }
 
     void Rocket2D::Update(double dt)
     {
+        /*
+            Update fuel mass
+        */
         if (state.fuelMass > 0.0)
         {
             double fuelConsumed = burnRate * dt;
@@ -122,9 +135,12 @@ namespace titan::simulation
         double vy = state.vy;
         double m = state.totalMass;
 
+        /*
+            RK4 Integration
+        */
+
         double k1_x = vx;
         double k1_y = vy;
-
         double k1_vx, k1_vy;
         ComputeAcceleration(x, y, vx, vy, m, k1_vx, k1_vy);
 
@@ -158,11 +174,69 @@ namespace titan::simulation
             k4_vx,
             k4_vy);
 
-        state.x += (dt / 6.0) * (k1_x + 2 * (vx + 0.5 * dt * k1_vx) + 2 * (vx + 0.5 * dt * k2_vx) + (vx + dt * k3_vx));
+        state.x += dt / 6.0 * (k1_x + 2 * (vx + 0.5 * dt * k1_vx) + 2 * (vx + 0.5 * dt * k2_vx) + (vx + dt * k3_vx));
 
-        state.y += (dt / 6.0) * (k1_y + 2 * (vy + 0.5 * dt * k1_vy) + 2 * (vy + 0.5 * dt * k2_vy) + (vy + dt * k3_vy));
+        state.y += dt / 6.0 * (k1_y + 2 * (vy + 0.5 * dt * k1_vy) + 2 * (vy + 0.5 * dt * k2_vy) + (vy + dt * k3_vy));
 
-        state.vx += (dt / 6.0) * (k1_vx + 2 * k2_vx + 2 * k3_vx + k4_vx);
-        state.vy += (dt / 6.0) * (k1_vy + 2 * k2_vy + 2 * k3_vy + k4_vy);
+        state.vx += dt / 6.0 * (k1_vx + 2 * k2_vx + 2 * k3_vx + k4_vx);
+        state.vy += dt / 6.0 * (k1_vy + 2 * k2_vy + 2 * k3_vy + k4_vy);
+
+        /*
+            Log trajectory point
+        */
+        simulationTime += dt;
+
+        trajectory.push_back({simulationTime,
+                              state.x,
+                              state.y,
+                              state.vx,
+                              state.vy,
+                              state.totalMass});
+    }
+
+    /*
+        Specific mechanical energy (J/kg)
+    */
+    double Rocket2D::ComputeSpecificOrbitalEnergy() const
+    {
+        double r = std::sqrt(state.x * state.x + state.y * state.y);
+        double v2 = state.vx * state.vx + state.vy * state.vy;
+
+        return (v2 / 2.0) - (EarthMu / r);
+    }
+
+    /*
+        Circular orbital velocity at current radius
+    */
+    double Rocket2D::ComputeOrbitalVelocity() const
+    {
+        double r = std::sqrt(state.x * state.x + state.y * state.y);
+        return std::sqrt(EarthMu / r);
+    }
+
+    /*
+        Basic orbit detection:
+        - Above atmosphere
+        - Velocity close to circular velocity
+    */
+    bool Rocket2D::IsInOrbit() const
+    {
+        double r = std::sqrt(state.x * state.x + state.y * state.y);
+        double altitude = r - EarthRadius;
+
+        if (altitude < 120000.0)
+            return false;
+
+        double v = std::sqrt(state.vx * state.vx + state.vy * state.vy);
+        double orbitalV = std::sqrt(EarthMu / r);
+
+        double tolerance = 50.0; // m/s
+
+        return std::abs(v - orbitalV) < tolerance;
+    }
+
+    const std::vector<TrajectoryPoint> &Rocket2D::GetTrajectory() const
+    {
+        return trajectory;
     }
 }

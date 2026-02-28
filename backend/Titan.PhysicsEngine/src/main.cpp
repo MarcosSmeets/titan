@@ -1,34 +1,50 @@
 #include <iostream>
-#include "simulation/Rocket1D.h"
+#include <iomanip>
+#include "simulation/Rocket2D.h"
+#include <cmath>
+
+using namespace titan::simulation;
 
 int main()
 {
-    titan::simulation::Rocket1D rocket(
-        1000.0, // dry mass (kg)
-        500.0,  // fuel (kg)
-        5.0,    // burn rate (kg/s)
-        3000.0, // thrust velocity (m/s)
-        0.75,   // Cd
-        1.0     // frontal area (m²)
+    Rocket2D rocket(
+        10000.0,  // dry mass (kg)
+        150000.0, // fuel mass (kg)
+        2500.0,   // burn rate (kg/s)
+        3000.0,   // exhaust velocity (m/s)
+        0.5,      // drag coefficient
+        10.0,     // cross section area (m^2)
+        10000.0   // gravity turn start altitude (m)
     );
 
     double dt = 0.1;
-    double totalTime = 200.0;
+    double simulationDuration = 600.0;
 
-    for (double t = 0; t < totalTime; t += dt)
+    for (double t = 0.0; t < simulationDuration; t += dt)
     {
         rocket.Update(dt);
+
         auto state = rocket.GetState();
 
-        std::cout << "t=" << t
-                  << " alt=" << state.altitude
-                  << " vel=" << state.velocity
-                  << " mass=" << state.totalMass
-                  << " fuel=" << state.fuelMass
-                  << std::endl;
+        double altitude = std::sqrt(state.x * state.x + state.y * state.y) - 6371000.0;
+        double velocity = std::sqrt(state.vx * state.vx + state.vy * state.vy);
+        double energy = rocket.ComputeSpecificOrbitalEnergy();
 
-        if (state.altitude < 0)
+        if (static_cast<int>(t) % 10 == 0)
+        {
+            std::cout << std::fixed << std::setprecision(2);
+            std::cout << "Time: " << t << " s\n";
+            std::cout << "Altitude: " << altitude << " m\n";
+            std::cout << "Velocity: " << velocity << " m/s\n";
+            std::cout << "Specific Energy: " << energy << " J/kg\n";
+            std::cout << "--------------------------\n";
+        }
+
+        if (rocket.IsInOrbit())
+        {
+            std::cout << "\n🚀 ORBIT ACHIEVED at time: " << t << " seconds\n";
             break;
+        }
     }
 
     return 0;

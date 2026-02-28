@@ -1,5 +1,8 @@
 #pragma once
 
+#include <vector>
+#include "simulation/TrajectoryPoint.h"
+
 namespace titan::simulation
 {
     struct RocketState2D
@@ -23,11 +26,17 @@ namespace titan::simulation
             double exhaustVelocity,
             double dragCoefficient,
             double crossSectionArea,
-            double initialPitchAngleDeg);
+            double gravityTurnStartAltitude);
 
         RocketState2D GetState() const;
 
         void Update(double dt);
+
+        double ComputeSpecificOrbitalEnergy() const;
+        double ComputeOrbitalVelocity() const;
+        bool IsInOrbit() const;
+
+        const std::vector<TrajectoryPoint> &GetTrajectory() const;
 
     private:
         void ComputeAcceleration(
@@ -46,7 +55,9 @@ namespace titan::simulation
         double exhaustVelocity;
         double dragCoefficient;
         double crossSectionArea;
+        double gravityTurnStartAltitude;
 
-        double pitchAngleRad; // constant pitch angle for now
+        std::vector<TrajectoryPoint> trajectory;
+        double simulationTime = 0.0;
     };
 }

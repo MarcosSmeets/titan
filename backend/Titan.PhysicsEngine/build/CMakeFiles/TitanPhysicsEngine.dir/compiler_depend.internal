@@ -307,8 +307,6 @@ CMakeFiles/TitanPhysicsEngine.dir/src/physics/AtmosphereModel.cpp.o
 
 CMakeFiles/TitanPhysicsEngine.dir/src/physics/GravityModel.cpp.o
  /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/src/physics/GravityModel.cpp
- /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/include/core/Constants.h
- /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/include/core/Vector3.h
  /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/include/physics/GravityModel.h
  /usr/include/alloca.h
  /usr/include/c++/13/bit
@@ -417,6 +415,7 @@ CMakeFiles/TitanPhysicsEngine.dir/src/physics/GravityModel.cpp.o
 CMakeFiles/TitanPhysicsEngine.dir/src/simulation/Rocket1D.cpp.o
  /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/src/simulation/Rocket1D.cpp
  /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/include/physics/AtmosphereModel.h
+ /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/include/physics/GravityModel.h
  /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/include/simulation/Rocket1D.h
  /usr/include/alloca.h
  /usr/include/c++/13/algorithm
