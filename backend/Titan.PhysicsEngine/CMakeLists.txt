@@ -13,3 +13,6 @@ file(GLOB_RECURSE SOURCES
 add_library(TitanPhysicsEngine SHARED ${SOURCES})
 
 target_include_directories(TitanPhysicsEngine PUBLIC include)
+
+add_executable(TitanTest src/main.cpp)
+target_link_libraries(TitanTest TitanPhysicsEngine)
