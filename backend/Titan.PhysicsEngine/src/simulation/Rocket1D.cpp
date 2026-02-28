@@ -1,5 +1,6 @@
 #include "simulation/Rocket1D.h"
 #include "physics/AtmosphereModel.h"
+#include <algorithm>
 
 namespace titan::simulation
 {
@@ -28,42 +29,98 @@ namespace titan::simulation
         return state;
     }
 
-    void Rocket1D::Update(double dt)
+    /*
+        Computes acceleration using:
+        F = Thrust - Weight + Drag
+
+        a = F / m
+    */
+    double Rocket1D::ComputeAcceleration(double altitude,
+                                         double velocity,
+                                         double mass) const
     {
         double thrust = 0.0;
 
+        // If fuel still available, generate thrust
+        if (state.fuelMass > 0.0)
+        {
+            thrust = burnRate * exhaustVelocity;
+        }
+
+        // Atmospheric density
+        double density = titan::physics::AtmosphereModel::GetDensity(altitude);
+
+        // Drag force magnitude
+        double drag = 0.5 * density *
+                      velocity * velocity *
+                      dragCoefficient *
+                      crossSectionArea;
+
+        // Drag direction opposes velocity
+        if (velocity > 0.0)
+            drag = -drag;
+
+        // Weight force
+        double weight = mass * g;
+
+        // Net force
+        double force = thrust - weight + drag;
+
+        return force / mass;
+    }
+
+    /*
+        Update using Runge-Kutta 4th Order integration.
+        State variables:
+            y1 = altitude
+            y2 = velocity
+    */
+    void Rocket1D::Update(double dt)
+    {
+        // Burn fuel
         if (state.fuelMass > 0.0)
         {
             double fuelConsumed = burnRate * dt;
-
-            if (fuelConsumed > state.fuelMass)
-                fuelConsumed = state.fuelMass;
-
+            fuelConsumed = std::min(fuelConsumed, state.fuelMass);
             state.fuelMass -= fuelConsumed;
-
-            thrust = burnRate * exhaustVelocity;
         }
 
         state.totalMass = dryMass + state.fuelMass;
 
-        double density = titan::physics::AtmosphereModel::GetDensity(state.altitude);
+        double h = state.altitude;
+        double v = state.velocity;
+        double m = state.totalMass;
 
-        double drag = 0.5 * density * state.velocity * state.velocity * dragCoefficient * crossSectionArea;
+        // k1
+        double k1_h = v;
+        double k1_v = ComputeAcceleration(h, v, m);
 
-        // drag
-        if (state.velocity > 0)
-            drag = -drag;
-        else
-            drag = drag;
+        // k2
+        double k2_h = v + 0.5 * dt * k1_v;
+        double k2_v = ComputeAcceleration(
+            h + 0.5 * dt * k1_h,
+            v + 0.5 * dt * k1_v,
+            m);
 
-        double weight = state.totalMass * g;
+        // k3
+        double k3_h = v + 0.5 * dt * k2_v;
+        double k3_v = ComputeAcceleration(
+            h + 0.5 * dt * k2_h,
+            v + 0.5 * dt * k2_v,
+            m);
 
-        double force = thrust - weight + drag;
+        // k4
+        double k4_h = v + dt * k3_v;
+        double k4_v = ComputeAcceleration(
+            h + dt * k3_h,
+            v + dt * k3_v,
+            m);
 
-        double acceleration = force / state.totalMass;
+        // Final RK4 update
+        state.altitude += (dt / 6.0) *
+                          (k1_h + 2.0 * k2_h + 2.0 * k3_h + k4_h);
 
-        // Euler
-        state.velocity += acceleration * dt;
-        state.altitude += state.velocity * dt;
+        state.velocity += (dt / 6.0) *
+                          (k1_v + 2.0 * k2_v + 2.0 * k3_v + k4_v);
     }
 }
