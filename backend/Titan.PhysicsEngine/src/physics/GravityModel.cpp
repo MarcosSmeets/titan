@@ -1,24 +1,25 @@
 #include "physics/GravityModel.h"
 #include <cmath>
 
-using namespace titan::core;
-using namespace titan::core::constants;
-
 namespace titan::physics
 {
-    Vector3 GravityModel::ComputeGravity(
-        const Vector3 &position,
-        double mass)
+    double GravityModel::ComputeGravity(double altitude)
     {
-        double r = position.Magnitude();
+        /*
+            Prevent negative altitude from breaking calculation.
+            If altitude is negative, clamp to zero.
+        */
+        if (altitude < 0.0)
+            altitude = 0.0;
 
-        if (r == 0.0)
-            return Vector3();
+        /*
+            Distance from Earth's center.
+        */
+        double r = EarthRadius + altitude;
 
-        double forceMagnitude = (G * EarthMass * mass) / (r * r);
-
-        Vector3 direction = position * (-1.0 / r);
-
-        return direction * forceMagnitude;
+        /*
+            Newtonian gravitational acceleration.
+        */
+        return (G * EarthMass) / (r * r);
     }
 }

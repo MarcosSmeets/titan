@@ -1,5 +1,6 @@
 #include "simulation/Rocket1D.h"
 #include "physics/AtmosphereModel.h"
+#include "physics/GravityModel.h"
 #include <algorithm>
 
 namespace titan::simulation
@@ -31,9 +32,14 @@ namespace titan::simulation
 
     /*
         Computes acceleration using:
-        F = Thrust - Weight + Drag
 
-        a = F / m
+            F = Thrust - Weight + Drag
+
+        Where:
+            Weight = m * g(h)
+            g(h) = GM / (R + h)^2
+
+        Returns acceleration in m/s².
     */
     double Rocket1D::ComputeAcceleration(double altitude,
                                          double velocity,
@@ -41,39 +47,45 @@ namespace titan::simulation
     {
         double thrust = 0.0;
 
-        // If fuel still available, generate thrust
+        // Generate thrust only if fuel remains
         if (state.fuelMass > 0.0)
         {
             thrust = burnRate * exhaustVelocity;
         }
 
-        // Atmospheric density
+        /*
+            Compute gravity at current altitude.
+            This replaces the constant 9.81 m/s² model.
+        */
+        double gravity = titan::physics::GravityModel::ComputeGravity(altitude);
+
+        double weight = mass * gravity;
+
+        /*
+            Compute atmospheric drag.
+        */
         double density = titan::physics::AtmosphereModel::GetDensity(altitude);
 
-        // Drag force magnitude
         double drag = 0.5 * density *
                       velocity * velocity *
                       dragCoefficient *
                       crossSectionArea;
 
-        // Drag direction opposes velocity
+        // Drag always opposes velocity direction
         if (velocity > 0.0)
             drag = -drag;
 
-        // Weight force
-        double weight = mass * g;
-
-        // Net force
+        /*
+            Net force:
+                Thrust - Weight + Drag
+        */
         double force = thrust - weight + drag;
 
         return force / mass;
     }
 
     /*
-        Update using Runge-Kutta 4th Order integration.
-        State variables:
-            y1 = altitude
-            y2 = velocity
+        RK4 integration of altitude and velocity.
     */
     void Rocket1D::Update(double dt)
     {
@@ -116,7 +128,6 @@ namespace titan::simulation
             v + dt * k3_v,
             m);
 
-        // Final RK4 update
         state.altitude += (dt / 6.0) *
                           (k1_h + 2.0 * k2_h + 2.0 * k3_h + k4_h);
 
