@@ -8,6 +8,8 @@ namespace titan::simulation
         double velocity;
         double totalMass;
         double fuelMass;
+        double dragCoefficient;
+        double crossSectionArea;
     };
 
     class Rocket1D
@@ -17,7 +19,9 @@ namespace titan::simulation
             double dryMass,
             double fuelMass,
             double burnRate,
-            double exhaustVelocity);
+            double exhaustVelocity,
+            double dragCoefficient,
+            double crossSectionArea);
 
         RocketState1D GetState() const;
 
@@ -29,6 +33,8 @@ namespace titan::simulation
         double dryMass;
         double burnRate;        // kg/s
         double exhaustVelocity; // m/s
+        double dragCoefficient;
+        double crossSectionArea;
 
         const double g = 9.81;
     };

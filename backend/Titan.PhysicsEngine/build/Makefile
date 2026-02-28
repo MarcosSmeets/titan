@@ -169,6 +169,30 @@ src/main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanTest.dir/build.make CMakeFiles/TitanTest.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
+src/physics/AtmosphereModel.o: src/physics/AtmosphereModel.cpp.o
+.PHONY : src/physics/AtmosphereModel.o
+
+# target to build an object file
+src/physics/AtmosphereModel.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/physics/AtmosphereModel.cpp.o
+.PHONY : src/physics/AtmosphereModel.cpp.o
+
+src/physics/AtmosphereModel.i: src/physics/AtmosphereModel.cpp.i
+.PHONY : src/physics/AtmosphereModel.i
+
+# target to preprocess a source file
+src/physics/AtmosphereModel.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/physics/AtmosphereModel.cpp.i
+.PHONY : src/physics/AtmosphereModel.cpp.i
+
+src/physics/AtmosphereModel.s: src/physics/AtmosphereModel.cpp.s
+.PHONY : src/physics/AtmosphereModel.s
+
+# target to generate assembly for a file
+src/physics/AtmosphereModel.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/physics/AtmosphereModel.cpp.s
+.PHONY : src/physics/AtmosphereModel.cpp.s
+
 src/physics/GravityModel.o: src/physics/GravityModel.cpp.o
 .PHONY : src/physics/GravityModel.o
 
@@ -230,6 +254,9 @@ help:
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
+	@echo "... src/physics/AtmosphereModel.o"
+	@echo "... src/physics/AtmosphereModel.i"
+	@echo "... src/physics/AtmosphereModel.s"
 	@echo "... src/physics/GravityModel.o"
 	@echo "... src/physics/GravityModel.i"
 	@echo "... src/physics/GravityModel.s"

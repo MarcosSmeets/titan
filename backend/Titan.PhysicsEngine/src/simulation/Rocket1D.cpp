@@ -1,4 +1,5 @@
 #include "simulation/Rocket1D.h"
+#include "physics/AtmosphereModel.h"
 
 namespace titan::simulation
 {
@@ -6,11 +7,15 @@ namespace titan::simulation
         double dryMass,
         double fuelMass,
         double burnRate,
-        double exhaustVelocity)
+        double exhaustVelocity,
+        double dragCoefficient,
+        double crossSectionArea)
     {
         this->dryMass = dryMass;
         this->burnRate = burnRate;
         this->exhaustVelocity = exhaustVelocity;
+        this->dragCoefficient = dragCoefficient;
+        this->crossSectionArea = crossSectionArea;
 
         state.altitude = 0.0;
         state.velocity = 0.0;
@@ -41,9 +46,19 @@ namespace titan::simulation
 
         state.totalMass = dryMass + state.fuelMass;
 
+        double density = titan::physics::AtmosphereModel::GetDensity(state.altitude);
+
+        double drag = 0.5 * density * state.velocity * state.velocity * dragCoefficient * crossSectionArea;
+
+        // drag
+        if (state.velocity > 0)
+            drag = -drag;
+        else
+            drag = drag;
+
         double weight = state.totalMass * g;
 
-        double force = thrust - weight;
+        double force = thrust - weight + drag;
 
         double acceleration = force / state.totalMass;
 
