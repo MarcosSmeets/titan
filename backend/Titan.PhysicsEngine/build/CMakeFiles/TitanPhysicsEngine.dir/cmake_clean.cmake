@@ -3,6 +3,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/TitanPhysicsEngine.dir/src/main.cpp.o.d"
   "CMakeFiles/TitanPhysicsEngine.dir/src/physics/GravityModel.cpp.o"
   "CMakeFiles/TitanPhysicsEngine.dir/src/physics/GravityModel.cpp.o.d"
+  "CMakeFiles/TitanPhysicsEngine.dir/src/simulation/Rocket1D.cpp.o"
+  "CMakeFiles/TitanPhysicsEngine.dir/src/simulation/Rocket1D.cpp.o.d"
   "libTitanPhysicsEngine.pdb"
   "libTitanPhysicsEngine.so"
 )
