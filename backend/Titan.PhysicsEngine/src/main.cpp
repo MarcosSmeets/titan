@@ -45,6 +45,13 @@ int main()
             std::cout << "\n🚀 ORBIT ACHIEVED at time: " << t << " seconds\n";
             break;
         }
+
+        auto elements = rocket.GetOrbitalElements();
+
+        std::cout << "Semi-major axis: " << elements.semiMajorAxis << " m\n";
+        std::cout << "Eccentricity: " << elements.eccentricity << "\n";
+        std::cout << "Apoapsis: " << elements.apoapsis - 6371000.0 << " m\n";
+        std::cout << "Periapsis: " << elements.periapsis - 6371000.0 << " m\n";
     }
 
     return 0;

@@ -2,6 +2,7 @@
 
 #include <vector>
 #include "simulation/TrajectoryPoint.h"
+#include "orbital/OrbitalMechanics.h"
 
 namespace titan::simulation
 {
@@ -35,6 +36,7 @@ namespace titan::simulation
         double ComputeSpecificOrbitalEnergy() const;
         double ComputeOrbitalVelocity() const;
         bool IsInOrbit() const;
+        titan::orbital::OrbitalElements GetOrbitalElements() const;
 
         const std::vector<TrajectoryPoint> &GetTrajectory() const;
 

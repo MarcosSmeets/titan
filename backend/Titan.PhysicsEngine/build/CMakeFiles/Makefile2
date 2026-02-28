@@ -83,12 +83,12 @@ clean: CMakeFiles/TitanTest.dir/clean
 CMakeFiles/TitanPhysicsEngine.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/build/CMakeFiles --progress-num=1,2,3,4,5,6 "Built target TitanPhysicsEngine"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/build/CMakeFiles --progress-num=1,2,3,4,5,6,7 "Built target TitanPhysicsEngine"
 .PHONY : CMakeFiles/TitanPhysicsEngine.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/TitanPhysicsEngine.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/build/CMakeFiles 6
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/build/CMakeFiles 7
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/TitanPhysicsEngine.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/build/CMakeFiles 0
 .PHONY : CMakeFiles/TitanPhysicsEngine.dir/rule
@@ -109,12 +109,12 @@ CMakeFiles/TitanPhysicsEngine.dir/clean:
 CMakeFiles/TitanTest.dir/all: CMakeFiles/TitanPhysicsEngine.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanTest.dir/build.make CMakeFiles/TitanTest.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanTest.dir/build.make CMakeFiles/TitanTest.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/build/CMakeFiles --progress-num=7,8 "Built target TitanTest"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/build/CMakeFiles --progress-num=8,9 "Built target TitanTest"
 .PHONY : CMakeFiles/TitanTest.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/TitanTest.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/build/CMakeFiles 8
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/build/CMakeFiles 9
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/TitanTest.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/marcos-smeets/Documents/workplace/titan/backend/Titan.PhysicsEngine/build/CMakeFiles 0
 .PHONY : CMakeFiles/TitanTest.dir/rule

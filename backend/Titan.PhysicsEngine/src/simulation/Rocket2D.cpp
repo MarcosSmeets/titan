@@ -239,4 +239,15 @@ namespace titan::simulation
     {
         return trajectory;
     }
+
+    titan::orbital::OrbitalElements Rocket2D::GetOrbitalElements() const
+    {
+        titan::math::Vector2 position(state.x, state.y);
+        titan::math::Vector2 velocity(state.vx, state.vy);
+
+        return titan::orbital::OrbitalMechanics::ComputeOrbitalElements(
+            position,
+            velocity,
+            EarthMu);
+    }
 }

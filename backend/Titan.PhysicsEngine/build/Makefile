@@ -169,6 +169,30 @@ src/main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanTest.dir/build.make CMakeFiles/TitanTest.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
+src/orbital/OrbitalMechanics.o: src/orbital/OrbitalMechanics.cpp.o
+.PHONY : src/orbital/OrbitalMechanics.o
+
+# target to build an object file
+src/orbital/OrbitalMechanics.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/orbital/OrbitalMechanics.cpp.o
+.PHONY : src/orbital/OrbitalMechanics.cpp.o
+
+src/orbital/OrbitalMechanics.i: src/orbital/OrbitalMechanics.cpp.i
+.PHONY : src/orbital/OrbitalMechanics.i
+
+# target to preprocess a source file
+src/orbital/OrbitalMechanics.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/orbital/OrbitalMechanics.cpp.i
+.PHONY : src/orbital/OrbitalMechanics.cpp.i
+
+src/orbital/OrbitalMechanics.s: src/orbital/OrbitalMechanics.cpp.s
+.PHONY : src/orbital/OrbitalMechanics.s
+
+# target to generate assembly for a file
+src/orbital/OrbitalMechanics.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/orbital/OrbitalMechanics.cpp.s
+.PHONY : src/orbital/OrbitalMechanics.cpp.s
+
 src/physics/AtmosphereModel.o: src/physics/AtmosphereModel.cpp.o
 .PHONY : src/physics/AtmosphereModel.o
 
@@ -278,6 +302,9 @@ help:
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
+	@echo "... src/orbital/OrbitalMechanics.o"
+	@echo "... src/orbital/OrbitalMechanics.i"
+	@echo "... src/orbital/OrbitalMechanics.s"
 	@echo "... src/physics/AtmosphereModel.o"
 	@echo "... src/physics/AtmosphereModel.i"
 	@echo "... src/physics/AtmosphereModel.s"
