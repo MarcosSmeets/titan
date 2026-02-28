@@ -1,39 +1,65 @@
 #include "orbital/OrbitalMechanics.h"
 #include <cmath>
 
-using namespace titan::math;
-
 namespace titan::orbital
 {
+
     OrbitalElements OrbitalMechanics::ComputeOrbitalElements(
-        const Vector2 &rVec,
-        const Vector2 &vVec,
+        const math::Vector2 &position,
+        const math::Vector2 &velocity,
         double mu)
     {
         OrbitalElements elements{};
 
-        double r = rVec.Magnitude();
-        double v = vVec.Magnitude();
+        double r = position.Magnitude();
+        double v = velocity.Magnitude();
+
+        // Prevent division by zero or extremely small radius
+        if (r <= 0.0 || r < 1.0)
+            return {0.0, 0.0, 0.0, 0.0};
 
         // Specific orbital energy
         double energy = (v * v) / 2.0 - mu / r;
-        elements.specificEnergy = energy;
 
         // Semi-major axis
-        elements.semiMajorAxis = -mu / (2.0 * energy);
+        if (std::abs(energy) > 1e-10)
+            elements.semiMajorAxis = -mu / (2.0 * energy);
+        else
+            elements.semiMajorAxis = 0.0;
 
-        // Angular momentum (scalar in 2D: r x v)
-        double h = rVec.x * vVec.y - rVec.y * vVec.x;
-        elements.angularMomentum = h;
+        // Angular momentum (2D scalar magnitude)
+        double h = position.x * velocity.y -
+                   position.y * velocity.x;
 
-        // Eccentricity
-        double e = std::sqrt(1.0 + (2.0 * energy * h * h) / (mu * mu));
-        elements.eccentricity = e;
+        // Compute eccentricity safely
+        double inside = 1.0 +
+                        (2.0 * energy * h * h) / (mu * mu);
 
-        // Apoapsis and periapsis
-        elements.apoapsis = elements.semiMajorAxis * (1.0 + e);
-        elements.periapsis = elements.semiMajorAxis * (1.0 - e);
+        // Clamp small negative values caused by floating point error
+        if (inside < 0.0)
+            inside = 0.0;
+
+        elements.eccentricity = std::sqrt(inside);
+
+        // Compute apoapsis and periapsis
+        if (elements.eccentricity < 1.0 && elements.semiMajorAxis > 0.0)
+        {
+            elements.apoapsis =
+                elements.semiMajorAxis *
+                (1.0 + elements.eccentricity);
+
+            elements.periapsis =
+                elements.semiMajorAxis *
+                (1.0 - elements.eccentricity);
+        }
+        else
+        {
+            // Hyperbolic or invalid orbit
+            elements.apoapsis = 0.0;
+            elements.periapsis = 0.0;
+        }
 
         return elements;
     }
+
 }

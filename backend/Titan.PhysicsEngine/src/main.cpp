@@ -1,57 +1,92 @@
 #include <iostream>
 #include <iomanip>
-#include "simulation/Rocket2D.h"
+#include <memory>
 #include <cmath>
 
-using namespace titan::simulation;
+#include "simulation/LaunchVehicle2D.h"
+#include "simulation/Stage.h"
+#include "integrators/RK4Integrator.h"
+#include "guidance/TargetApoapsisGuidance.h"
+#include "orbital/OrbitalMechanics.h"
+#include "math/Vector2.h"
+
+using namespace titan;
 
 int main()
 {
-    Rocket2D rocket(
-        10000.0,  // dry mass (kg)
-        150000.0, // fuel mass (kg)
-        2500.0,   // burn rate (kg/s)
-        3000.0,   // exhaust velocity (m/s)
-        0.5,      // drag coefficient
-        10.0,     // cross section area (m^2)
-        10000.0   // gravity turn start altitude (m)
-    );
+    const double earthRadius = 6371000.0;
+    const double mu = 3.986e14;
 
-    double dt = 0.1;
+    auto integrator =
+        std::make_unique<integrators::RK4Integrator>();
+
+    auto guidance =
+        std::make_unique<guidance::TargetApoapsisGuidance>(
+            200000.0, // Target apoapsis: 200 km
+            earthRadius);
+
+    simulation::LaunchVehicle2D rocket(
+        earthRadius,
+        mu,
+        std::move(integrator),
+        std::move(guidance));
+
+    rocket.AddStage(
+        simulation::Stage(
+            10000.0,  // dry mass
+            150000.0, // fuel mass
+            2500.0,   // burn rate
+            3000.0)); // exhaust velocity
+
+    double dt = 0.05;
     double simulationDuration = 600.0;
 
     for (double t = 0.0; t < simulationDuration; t += dt)
     {
         rocket.Update(dt);
 
-        auto state = rocket.GetState();
+        auto pos = rocket.GetPosition();
+        auto vel = rocket.GetVelocity();
+        // numerical stability guard
+        if (std::isnan(pos.x) || std::isnan(vel.x))
+        {
+            std::cout << "Numerical instability detected.\n";
+            break;
+        }
+        double r = std::sqrt(pos.x * pos.x + pos.y * pos.y);
+        double altitude = r - earthRadius;
+        double velocity = std::sqrt(vel.x * vel.x + vel.y * vel.y);
 
-        double altitude = std::sqrt(state.x * state.x + state.y * state.y) - 6371000.0;
-        double velocity = std::sqrt(state.vx * state.vx + state.vy * state.vy);
-        double energy = rocket.ComputeSpecificOrbitalEnergy();
+        math::Vector2 rVec(pos.x, pos.y);
+        math::Vector2 vVec(vel.x, vel.y);
 
-        if (static_cast<int>(t) % 10 == 0)
+        auto elements =
+            orbital::OrbitalMechanics::ComputeOrbitalElements(
+                rVec, vVec, mu);
+
+        double apoapsis = elements.apoapsis - earthRadius;
+        double periapsis = elements.periapsis - earthRadius;
+
+        if (static_cast<int>(t) % 5 == 0)
         {
             std::cout << std::fixed << std::setprecision(2);
             std::cout << "Time: " << t << " s\n";
             std::cout << "Altitude: " << altitude << " m\n";
             std::cout << "Velocity: " << velocity << " m/s\n";
-            std::cout << "Specific Energy: " << energy << " J/kg\n";
-            std::cout << "--------------------------\n";
+            std::cout << "Apoapsis: " << apoapsis << " m\n";
+            std::cout << "Periapsis: " << periapsis << " m\n";
+            std::cout << "Eccentricity: " << elements.eccentricity << "\n";
+            std::cout << "-----------------------------\n";
         }
 
-        if (rocket.IsInOrbit())
+        // Orbit condition: periapsis above atmosphere and near circular
+        if (periapsis > 150000.0 &&
+            elements.eccentricity < 0.05)
         {
-            std::cout << "\n🚀 ORBIT ACHIEVED at time: " << t << " seconds\n";
+            std::cout << "\n🚀 ORBIT ACHIEVED at t = "
+                      << t << " seconds\n";
             break;
         }
-
-        auto elements = rocket.GetOrbitalElements();
-
-        std::cout << "Semi-major axis: " << elements.semiMajorAxis << " m\n";
-        std::cout << "Eccentricity: " << elements.eccentricity << "\n";
-        std::cout << "Apoapsis: " << elements.apoapsis - 6371000.0 << " m\n";
-        std::cout << "Periapsis: " << elements.periapsis - 6371000.0 << " m\n";
     }
 
     return 0;

@@ -1,7 +1,7 @@
 #pragma once
 #include "Integrator.h"
 
-namespace titan::integration
+namespace titan::integrators
 {
     class RK4Integrator : public Integrator
     {

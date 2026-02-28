@@ -1,17 +1,26 @@
 #include "simulation/LaunchVehicle2D.h"
 #include <cmath>
-
-using namespace titan::math;
+#include <iostream>
+#include <cstdlib>
 
 namespace titan::simulation
 {
-    LaunchVehicle2D::LaunchVehicle2D(double earthRadius, double mu, std::unique_ptr<titan::integration::Integrator> integrator)
+
+    LaunchVehicle2D::LaunchVehicle2D(
+        double earthRadius,
+        double mu,
+        std::unique_ptr<titan::integrators::Integrator> integrator,
+        std::unique_ptr<titan::guidance::Guidance> guidance)
         : m_earthRadius(earthRadius),
           m_mu(mu),
           m_integrator(std::move(integrator)),
-          m_pitchAngle(3.141592653589793 / 2.0) // Start vertical (90 degrees)
+          m_guidance(std::move(guidance))
     {
-        m_state = {0.0, earthRadius, 0.0, 0.0};
+        // Initialize rocket at Earth's surface
+        m_state.x = earthRadius + 1.0; // 1 meter above surface
+        m_state.y = 0.0;
+        m_state.vx = 0.0;
+        m_state.vy = 0.0;
     }
 
     void LaunchVehicle2D::AddStage(const Stage &stage)
@@ -29,63 +38,97 @@ namespace titan::simulation
         return total;
     }
 
-    titan::math::Vector2 LaunchVehicle2D::GetPosition() const
+    void LaunchVehicle2D::Update(double dt)
     {
-        return Vector2(m_state.x, m_state.y);
-    }
+        double r = std::sqrt(m_state.x * m_state.x +
+                             m_state.y * m_state.y);
 
-    titan::math::Vector2 LaunchVehicle2D::GetVelocity() const
-    {
-        return Vector2(m_state.vx, m_state.vy);
+        if (r <= m_earthRadius - 1.0)
+        {
+            std::cout << "Rocket impacted Earth.\n";
+            std::exit(0);
+        }
+
+        double totalMass = GetTotalMass();
+
+        if (totalMass <= 0.0)
+        {
+            std::cout << "All stages depleted. Simulation stopping.\n";
+            std::exit(0);
+        }
+
+        double pitch = m_guidance->ComputePitchAngle(
+            m_state,
+            m_mu);
+
+        double thrustX = 0.0;
+        double thrustY = 0.0;
+
+        if (!m_stages.empty() && m_stages.front().HasFuel())
+        {
+            m_stages.front().Burn(dt);
+            double thrust = m_stages.front().GetThrust();
+
+            thrustX = thrust * std::cos(pitch);
+            thrustY = thrust * std::sin(pitch);
+        }
+
+        // ---- Physics integration using generic integrator ----
+
+        auto derivativeFunc =
+            [&](const titan::integrators::State &state)
+            -> titan::integrators::Derivative
+        {
+            titan::integrators::Derivative d;
+
+            double radius = std::sqrt(state.x * state.x +
+                                      state.y * state.y);
+
+            // Position derivatives
+            d.dx = state.vx;
+            d.dy = state.vy;
+
+            // Gravitational acceleration
+            double factor = -m_mu / (radius * radius * radius);
+
+            double ax_gravity = factor * state.x;
+            double ay_gravity = factor * state.y;
+
+            // Thrust acceleration
+            double ax_thrust = thrustX / totalMass;
+            double ay_thrust = thrustY / totalMass;
+
+            d.dvx = ax_gravity + ax_thrust;
+            d.dvy = ay_gravity + ay_thrust;
+
+            return d;
+        };
+
+        m_state = m_integrator->Step(
+            m_state,
+            dt,
+            derivativeFunc);
+
+        SeparateStageIfNeeded();
     }
 
     void LaunchVehicle2D::SeparateStageIfNeeded()
     {
         if (!m_stages.empty() && m_stages.front().IsDepleted())
         {
-            // Remove empty stage (stage separation event)
+            std::cout << "Stage separation.\n";
             m_stages.erase(m_stages.begin());
         }
     }
 
-    void LaunchVehicle2D::Update(double dt)
+    titan::math::Vector2 LaunchVehicle2D::GetPosition() const
     {
-        if (m_stages.empty())
-            return;
-
-        Stage &activeStage = m_stages.front();
-
-        // Burn fuel
-        activeStage.Burn(dt);
-
-        // Separate if empty
-        SeparateStageIfNeeded();
-
-        double totalMass = GetTotalMass();
-
-        double thrustMagnitude = activeStage.GetThrust();
-
-        auto derivativeFunc = [this, totalMass, thrustMagnitude](const titan::integration::State &s)
-        {
-            titan::integration::Derivative d;
-
-            double r = std::sqrt(s.x * s.x + s.y * s.y);
-            double gravityMagnitude = -m_mu / (r * r);
-
-            double gx = gravityMagnitude * (s.x / r);
-            double gy = gravityMagnitude * (s.y / r);
-
-            double tx = std::cos(m_pitchAngle) * (thrustMagnitude / totalMass);
-            double ty = std::sin(m_pitchAngle) * (thrustMagnitude / totalMass);
-
-            d.dx = s.vx;
-            d.dy = s.vy;
-            d.dvx = gx + tx;
-            d.dvy = gy + ty;
-
-            return d;
-        };
-
-        m_state = m_integrator->Step(m_state, dt, derivativeFunc);
+        return {m_state.x, m_state.y};
     }
+
+    titan::math::Vector2 LaunchVehicle2D::GetVelocity() const
+    {
+        return {m_state.vx, m_state.vy};
+    }
+
 }

@@ -1,28 +1,25 @@
 #pragma once
+
 #include <vector>
+#include <memory>
+
 #include "Stage.h"
 #include "math/Vector2.h"
 #include "integrators/Integrator.h"
-#include <memory>
+#include "guidance/Guidance.h"
 
 namespace titan::simulation
 {
-    /*
-        Represents a multi-stage launch vehicle in 2D space.
-
-        This class is responsible for:
-        - Managing stages
-        - Computing total mass
-        - Producing thrust from active stage
-        - Performing stage separation
-    */
     class LaunchVehicle2D
     {
     public:
-        LaunchVehicle2D(double earthRadius, double mu, std::unique_ptr<titan::integration::Integrator> integrator);
+        LaunchVehicle2D(
+            double earthRadius,
+            double mu,
+            std::unique_ptr<titan::integrators::Integrator> integrator,
+            std::unique_ptr<titan::guidance::Guidance> guidance);
 
         void AddStage(const Stage &stage);
-
         void Update(double dt);
 
         titan::math::Vector2 GetPosition() const;
@@ -34,13 +31,12 @@ namespace titan::simulation
         void SeparateStageIfNeeded();
 
         std::vector<Stage> m_stages;
+        titan::integrators::State m_state;
 
-        titan::integration::State m_state;
-        std::unique_ptr<titan::integration::Integrator> m_integrator;
+        std::unique_ptr<titan::integrators::Integrator> m_integrator;
+        std::unique_ptr<titan::guidance::Guidance> m_guidance;
 
         double m_earthRadius;
-        double m_mu; // gravitational parameter (GM)
-
-        double m_pitchAngle; // radians
+        double m_mu;
     };
 }

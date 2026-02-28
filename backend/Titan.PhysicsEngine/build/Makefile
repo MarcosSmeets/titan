@@ -142,6 +142,78 @@ TitanTest/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanTest.dir/build.make CMakeFiles/TitanTest.dir/build
 .PHONY : TitanTest/fast
 
+src/guidance/TargetApoapsisGuidance.o: src/guidance/TargetApoapsisGuidance.cpp.o
+.PHONY : src/guidance/TargetApoapsisGuidance.o
+
+# target to build an object file
+src/guidance/TargetApoapsisGuidance.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/guidance/TargetApoapsisGuidance.cpp.o
+.PHONY : src/guidance/TargetApoapsisGuidance.cpp.o
+
+src/guidance/TargetApoapsisGuidance.i: src/guidance/TargetApoapsisGuidance.cpp.i
+.PHONY : src/guidance/TargetApoapsisGuidance.i
+
+# target to preprocess a source file
+src/guidance/TargetApoapsisGuidance.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/guidance/TargetApoapsisGuidance.cpp.i
+.PHONY : src/guidance/TargetApoapsisGuidance.cpp.i
+
+src/guidance/TargetApoapsisGuidance.s: src/guidance/TargetApoapsisGuidance.cpp.s
+.PHONY : src/guidance/TargetApoapsisGuidance.s
+
+# target to generate assembly for a file
+src/guidance/TargetApoapsisGuidance.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/guidance/TargetApoapsisGuidance.cpp.s
+.PHONY : src/guidance/TargetApoapsisGuidance.cpp.s
+
+src/integrators/EulerIntegrator.o: src/integrators/EulerIntegrator.cpp.o
+.PHONY : src/integrators/EulerIntegrator.o
+
+# target to build an object file
+src/integrators/EulerIntegrator.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/integrators/EulerIntegrator.cpp.o
+.PHONY : src/integrators/EulerIntegrator.cpp.o
+
+src/integrators/EulerIntegrator.i: src/integrators/EulerIntegrator.cpp.i
+.PHONY : src/integrators/EulerIntegrator.i
+
+# target to preprocess a source file
+src/integrators/EulerIntegrator.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/integrators/EulerIntegrator.cpp.i
+.PHONY : src/integrators/EulerIntegrator.cpp.i
+
+src/integrators/EulerIntegrator.s: src/integrators/EulerIntegrator.cpp.s
+.PHONY : src/integrators/EulerIntegrator.s
+
+# target to generate assembly for a file
+src/integrators/EulerIntegrator.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/integrators/EulerIntegrator.cpp.s
+.PHONY : src/integrators/EulerIntegrator.cpp.s
+
+src/integrators/RK4Integrator.o: src/integrators/RK4Integrator.cpp.o
+.PHONY : src/integrators/RK4Integrator.o
+
+# target to build an object file
+src/integrators/RK4Integrator.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/integrators/RK4Integrator.cpp.o
+.PHONY : src/integrators/RK4Integrator.cpp.o
+
+src/integrators/RK4Integrator.i: src/integrators/RK4Integrator.cpp.i
+.PHONY : src/integrators/RK4Integrator.i
+
+# target to preprocess a source file
+src/integrators/RK4Integrator.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/integrators/RK4Integrator.cpp.i
+.PHONY : src/integrators/RK4Integrator.cpp.i
+
+src/integrators/RK4Integrator.s: src/integrators/RK4Integrator.cpp.s
+.PHONY : src/integrators/RK4Integrator.s
+
+# target to generate assembly for a file
+src/integrators/RK4Integrator.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/integrators/RK4Integrator.cpp.s
+.PHONY : src/integrators/RK4Integrator.cpp.s
+
 src/main.o: src/main.cpp.o
 .PHONY : src/main.o
 
@@ -241,6 +313,30 @@ src/physics/GravityModel.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/physics/GravityModel.cpp.s
 .PHONY : src/physics/GravityModel.cpp.s
 
+src/simulation/LaunchVehicle2D.o: src/simulation/LaunchVehicle2D.cpp.o
+.PHONY : src/simulation/LaunchVehicle2D.o
+
+# target to build an object file
+src/simulation/LaunchVehicle2D.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/simulation/LaunchVehicle2D.cpp.o
+.PHONY : src/simulation/LaunchVehicle2D.cpp.o
+
+src/simulation/LaunchVehicle2D.i: src/simulation/LaunchVehicle2D.cpp.i
+.PHONY : src/simulation/LaunchVehicle2D.i
+
+# target to preprocess a source file
+src/simulation/LaunchVehicle2D.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/simulation/LaunchVehicle2D.cpp.i
+.PHONY : src/simulation/LaunchVehicle2D.cpp.i
+
+src/simulation/LaunchVehicle2D.s: src/simulation/LaunchVehicle2D.cpp.s
+.PHONY : src/simulation/LaunchVehicle2D.s
+
+# target to generate assembly for a file
+src/simulation/LaunchVehicle2D.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/TitanPhysicsEngine.dir/build.make CMakeFiles/TitanPhysicsEngine.dir/src/simulation/LaunchVehicle2D.cpp.s
+.PHONY : src/simulation/LaunchVehicle2D.cpp.s
+
 src/simulation/Rocket1D.o: src/simulation/Rocket1D.cpp.o
 .PHONY : src/simulation/Rocket1D.o
 
@@ -299,6 +395,15 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... TitanPhysicsEngine"
 	@echo "... TitanTest"
+	@echo "... src/guidance/TargetApoapsisGuidance.o"
+	@echo "... src/guidance/TargetApoapsisGuidance.i"
+	@echo "... src/guidance/TargetApoapsisGuidance.s"
+	@echo "... src/integrators/EulerIntegrator.o"
+	@echo "... src/integrators/EulerIntegrator.i"
+	@echo "... src/integrators/EulerIntegrator.s"
+	@echo "... src/integrators/RK4Integrator.o"
+	@echo "... src/integrators/RK4Integrator.i"
+	@echo "... src/integrators/RK4Integrator.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
@@ -311,6 +416,9 @@ help:
 	@echo "... src/physics/GravityModel.o"
 	@echo "... src/physics/GravityModel.i"
 	@echo "... src/physics/GravityModel.s"
+	@echo "... src/simulation/LaunchVehicle2D.o"
+	@echo "... src/simulation/LaunchVehicle2D.i"
+	@echo "... src/simulation/LaunchVehicle2D.s"
 	@echo "... src/simulation/Rocket1D.o"
 	@echo "... src/simulation/Rocket1D.i"
 	@echo "... src/simulation/Rocket1D.s"

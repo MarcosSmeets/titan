@@ -1,6 +1,6 @@
 #include "integrators/EulerIntegrator.h"
 
-namespace titan::integration
+namespace titan::integrators
 {
     State EulerIntegrator::Step(
         const State &current,

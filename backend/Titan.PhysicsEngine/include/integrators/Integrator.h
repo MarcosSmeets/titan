@@ -1,7 +1,7 @@
 #pragma once
 #include <functional>
 
-namespace titan::integration
+namespace titan::integrators
 {
     /*
         Represents the state of a dynamical system.

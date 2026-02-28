@@ -1,6 +1,6 @@
 #include "integrators/RK4Integrator.h"
 
-namespace titan::integration
+namespace titan::integrators
 {
     State RK4Integrator::Step(
         const State &current,
