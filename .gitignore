@@ -40,9 +40,8 @@
 # debug information files
 *.dwo
 
-# ignorar diretórios de build
+# ignor build files
 /build/
 /backend/Titan.PhysicsEngine/build/
 
-# configuração do editor
 .vscode/
