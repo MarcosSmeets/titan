@@ -2,6 +2,8 @@
 #include <vector>
 #include "Stage.h"
 #include "math/Vector2.h"
+#include "integrators/Integrator.h"
+#include <memory>
 
 namespace titan::simulation
 {
@@ -17,7 +19,7 @@ namespace titan::simulation
     class LaunchVehicle2D
     {
     public:
-        LaunchVehicle2D(double earthRadius, double mu);
+        LaunchVehicle2D(double earthRadius, double mu, std::unique_ptr<titan::integration::Integrator> integrator);
 
         void AddStage(const Stage &stage);
 
@@ -33,8 +35,8 @@ namespace titan::simulation
 
         std::vector<Stage> m_stages;
 
-        titan::math::Vector2 m_position;
-        titan::math::Vector2 m_velocity;
+        titan::integration::State m_state;
+        std::unique_ptr<titan::integration::Integrator> m_integrator;
 
         double m_earthRadius;
         double m_mu; // gravitational parameter (GM)

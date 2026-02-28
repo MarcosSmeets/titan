@@ -5,16 +5,13 @@ using namespace titan::math;
 
 namespace titan::simulation
 {
-    LaunchVehicle2D::LaunchVehicle2D(double earthRadius, double mu)
+    LaunchVehicle2D::LaunchVehicle2D(double earthRadius, double mu, std::unique_ptr<titan::integration::Integrator> integrator)
         : m_earthRadius(earthRadius),
           m_mu(mu),
+          m_integrator(std::move(integrator)),
           m_pitchAngle(3.141592653589793 / 2.0) // Start vertical (90 degrees)
     {
-        // Initial position at Earth's surface
-        m_position = Vector2(0.0, earthRadius);
-
-        // Initial velocity is zero
-        m_velocity = Vector2(0.0, 0.0);
+        m_state = {0.0, earthRadius, 0.0, 0.0};
     }
 
     void LaunchVehicle2D::AddStage(const Stage &stage)
@@ -34,12 +31,12 @@ namespace titan::simulation
 
     titan::math::Vector2 LaunchVehicle2D::GetPosition() const
     {
-        return m_position;
+        return Vector2(m_state.x, m_state.y);
     }
 
     titan::math::Vector2 LaunchVehicle2D::GetVelocity() const
     {
-        return m_velocity;
+        return Vector2(m_state.vx, m_state.vy);
     }
 
     void LaunchVehicle2D::SeparateStageIfNeeded()
@@ -66,25 +63,29 @@ namespace titan::simulation
 
         double totalMass = GetTotalMass();
 
-        // Compute gravitational acceleration (1/r²)
-        double r = m_position.Magnitude();
-        double gravityMagnitude = -m_mu / (r * r);
-
-        Vector2 gravityDir = m_position.Normalized();
-        Vector2 gravity = gravityDir * gravityMagnitude;
-
-        // Thrust direction based on pitch angle
-        Vector2 thrustDir(std::cos(m_pitchAngle),
-                          std::sin(m_pitchAngle));
-
         double thrustMagnitude = activeStage.GetThrust();
-        Vector2 thrust = thrustDir * (thrustMagnitude / totalMass);
 
-        // Total acceleration
-        Vector2 acceleration = gravity + thrust;
+        auto derivativeFunc = [this, totalMass, thrustMagnitude](const titan::integration::State &s)
+        {
+            titan::integration::Derivative d;
 
-        // Simple Euler integration (temporary, will abstract later)
-        m_velocity += acceleration * dt;
-        m_position += m_velocity * dt;
+            double r = std::sqrt(s.x * s.x + s.y * s.y);
+            double gravityMagnitude = -m_mu / (r * r);
+
+            double gx = gravityMagnitude * (s.x / r);
+            double gy = gravityMagnitude * (s.y / r);
+
+            double tx = std::cos(m_pitchAngle) * (thrustMagnitude / totalMass);
+            double ty = std::sin(m_pitchAngle) * (thrustMagnitude / totalMass);
+
+            d.dx = s.vx;
+            d.dy = s.vy;
+            d.dvx = gx + tx;
+            d.dvy = gy + ty;
+
+            return d;
+        };
+
+        m_state = m_integrator->Step(m_state, dt, derivativeFunc);
     }
 }
