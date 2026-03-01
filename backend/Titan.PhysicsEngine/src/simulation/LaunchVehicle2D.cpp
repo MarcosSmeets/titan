@@ -9,13 +9,14 @@ namespace titan::simulation
         double earthRadius,
         double mu,
         std::unique_ptr<titan::integrators::Integrator> integrator,
-        std::unique_ptr<titan::guidance::Guidance> guidance)
+        std::unique_ptr<titan::guidance::Guidance> guidance,
+        double gLimit)
         : m_earthRadius(earthRadius),
           m_mu(mu),
           m_integrator(std::move(integrator)),
-          m_guidance(std::move(guidance))
+          m_guidance(std::move(guidance)),
+          m_gLimit(gLimit)
     {
-        // Start slightly above surface to avoid numerical issues
         m_state.x = earthRadius + 1.0;
         m_state.y = 0.0;
         m_state.vx = 0.0;
@@ -32,7 +33,6 @@ namespace titan::simulation
         double total = 0.0;
         for (const auto &stage : m_stages)
             total += stage.GetMass();
-
         return total;
     }
 
@@ -55,9 +55,6 @@ namespace titan::simulation
             std::exit(0);
         }
 
-        double altitude = r - m_earthRadius;
-        double density = m_atmosphere.GetDensity(altitude);
-
         double pitch = m_guidance->ComputePitchAngle(
             m_state,
             m_mu);
@@ -67,15 +64,33 @@ namespace titan::simulation
 
         if (!m_stages.empty() && m_stages.front().HasFuel())
         {
-            m_stages.front().Burn(dt);
+            Stage &stage = m_stages.front();
 
-            double thrust = m_stages.front().GetThrust();
+            /*
+                CLOSED-LOOP THROTTLE CONTROL
+
+                Limit acceleration to m_gLimit * g0.
+            */
+
+            const double g0 = 9.81;
+            double maxAllowedAcceleration = m_gLimit * g0;
+
+            double maxThrust = stage.GetMaxThrust();
+
+            double requiredThrottle =
+                (totalMass * maxAllowedAcceleration) / maxThrust;
+
+            requiredThrottle = std::clamp(requiredThrottle, 0.0, 1.0);
+
+            stage.SetThrottle(requiredThrottle);
+
+            stage.Burn(dt);
+
+            double thrust = stage.GetThrust();
 
             thrustX = thrust * std::cos(pitch);
             thrustY = thrust * std::sin(pitch);
         }
-
-        // ---- Physics integration using generic integrator ----
 
         auto derivativeFunc =
             [&](const titan::integrators::State &state)
@@ -86,17 +101,14 @@ namespace titan::simulation
             double radius = std::sqrt(state.x * state.x +
                                       state.y * state.y);
 
-            // Position derivatives
             d.dx = state.vx;
             d.dy = state.vy;
 
-            // Gravitational acceleration
             double factor = -m_mu / (radius * radius * radius);
 
             double ax_gravity = factor * state.x;
             double ay_gravity = factor * state.y;
 
-            // Thrust acceleration
             double ax_thrust = thrustX / totalMass;
             double ay_thrust = thrustY / totalMass;
 

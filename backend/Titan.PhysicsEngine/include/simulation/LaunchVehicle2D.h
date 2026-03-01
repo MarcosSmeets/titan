@@ -16,7 +16,8 @@ namespace titan::simulation
             double earthRadius,
             double mu,
             std::unique_ptr<titan::integrators::Integrator> integrator,
-            std::unique_ptr<titan::guidance::Guidance> guidance);
+            std::unique_ptr<titan::guidance::Guidance> guidance,
+            double gLimit = 4.0); // maximum allowed acceleration in g
 
         void AddStage(const Stage &stage);
 
@@ -33,6 +34,7 @@ namespace titan::simulation
 
         double m_earthRadius;
         double m_mu;
+        double m_gLimit; // g limit
 
         std::vector<Stage> m_stages;
 

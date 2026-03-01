@@ -41,11 +41,19 @@ namespace titan::simulation
         }
 
         /*
+            Returns maximum possible thrust (100% throttle).
+        */
+        double GetMaxThrust() const
+        {
+            return m_burnRate * m_exhaustVelocity;
+        }
+
+        /*
             Returns current thrust (depends on throttle).
         */
         double GetThrust() const
         {
-            return m_throttle * m_burnRate * m_exhaustVelocity;
+            return m_throttle * GetMaxThrust();
         }
 
         /*
@@ -91,8 +99,8 @@ namespace titan::simulation
         double m_burnRate;
         double m_exhaustVelocity;
 
-        double m_referenceArea;   // m^2
-        double m_dragCoefficient; // Cd
+        double m_referenceArea;
+        double m_dragCoefficient;
         double m_throttle;
     };
 }
