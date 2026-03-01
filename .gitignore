@@ -43,5 +43,6 @@
 # ignor build files
 /build/
 /backend/Titan.PhysicsEngine/build/
+/backend/include/CMakeFiles/
 
 .vscode/
