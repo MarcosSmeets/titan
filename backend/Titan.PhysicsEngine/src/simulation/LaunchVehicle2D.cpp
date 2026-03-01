@@ -1,7 +1,6 @@
 #include "simulation/LaunchVehicle2D.h"
 #include <cmath>
 #include <iostream>
-#include <cstdlib>
 
 namespace titan::simulation
 {
@@ -16,8 +15,8 @@ namespace titan::simulation
           m_integrator(std::move(integrator)),
           m_guidance(std::move(guidance))
     {
-        // Initialize rocket at Earth's surface
-        m_state.x = earthRadius + 1.0; // 1 meter above surface
+        // Start slightly above surface to avoid numerical issues
+        m_state.x = earthRadius + 1.0;
         m_state.y = 0.0;
         m_state.vx = 0.0;
         m_state.vy = 0.0;
@@ -31,7 +30,6 @@ namespace titan::simulation
     double LaunchVehicle2D::GetTotalMass() const
     {
         double total = 0.0;
-
         for (const auto &stage : m_stages)
             total += stage.GetMass();
 
@@ -40,6 +38,14 @@ namespace titan::simulation
 
     void LaunchVehicle2D::Update(double dt)
     {
+        double totalMass = GetTotalMass();
+
+        if (totalMass <= 0.0)
+        {
+            std::cout << "All stages depleted.\n";
+            return;
+        }
+
         double r = std::sqrt(m_state.x * m_state.x +
                              m_state.y * m_state.y);
 
@@ -49,13 +55,8 @@ namespace titan::simulation
             std::exit(0);
         }
 
-        double totalMass = GetTotalMass();
-
-        if (totalMass <= 0.0)
-        {
-            std::cout << "All stages depleted. Simulation stopping.\n";
-            std::exit(0);
-        }
+        double altitude = r - m_earthRadius;
+        double density = m_atmosphere.GetDensity(altitude);
 
         double pitch = m_guidance->ComputePitchAngle(
             m_state,
@@ -67,6 +68,7 @@ namespace titan::simulation
         if (!m_stages.empty() && m_stages.front().HasFuel())
         {
             m_stages.front().Burn(dt);
+
             double thrust = m_stages.front().GetThrust();
 
             thrustX = thrust * std::cos(pitch);
@@ -130,5 +132,4 @@ namespace titan::simulation
     {
         return {m_state.vx, m_state.vy};
     }
-
 }

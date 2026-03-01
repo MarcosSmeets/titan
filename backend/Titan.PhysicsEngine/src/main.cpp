@@ -36,7 +36,9 @@ int main()
             10000.0,  // dry mass
             150000.0, // fuel mass
             2500.0,   // burn rate
-            3000.0)); // exhaust velocity
+            3000.0,   // exhaust velocity
+            10.0,     // reference area (m^2)
+            0.5));    // drag coefficient
 
     double dt = 0.05;
     double simulationDuration = 600.0;
