@@ -39,3 +39,9 @@
 
 # debug information files
 *.dwo
+
+# ignor build files
+/build/
+/backend/Titan.PhysicsEngine/build/
+
+.vscode/
