@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import SimulationHistory from './SimulationHistory';
-import type { RocketPreset, SimulationRequest, TelemetryPoint, StageEvent } from '../types';
+import { useState, useEffect } from 'react';
+import { fetchCustomRockets, deleteCustomRocket } from '../services/api';
+import type { RocketPreset, SimulationRequest, TelemetryPoint, StageEvent, CustomRocket } from '../types';
 
 interface HeroSectionProps {
   rockets: RocketPreset[];
@@ -12,7 +12,45 @@ interface HeroSectionProps {
 export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom }: HeroSectionProps) {
   const [selectedRocket, setSelectedRocket] = useState<string>('');
   const [targetAlt, setTargetAlt] = useState(200);
+  const [customRockets, setCustomRockets] = useState<CustomRocket[]>([]);
+  const [selectedCustom, setSelectedCustom] = useState<string>('');
+
+  useEffect(() => {
+    fetchCustomRockets().then(setCustomRockets).catch(() => {});
+  }, []);
+
+  const handleDeleteCustom = async (id: string) => {
+    await deleteCustomRocket(id);
+    setCustomRockets(prev => prev.filter(r => r.id !== id));
+    if (selectedCustom === id) setSelectedCustom('');
+  };
+
+  const G0 = 9.80665;
+
   const handleLaunch = () => {
+    // Custom rocket launch
+    if (selectedCustom) {
+      const custom = customRockets.find(r => r.id === selectedCustom);
+      if (!custom) return;
+      onLaunch({
+        targetAltitude: targetAlt * 1000,
+        maxG: 4.0,
+        dt: 0.05,
+        duration: 900,
+        integratorType: 2,
+        guidanceType: 0,
+        timeWarp: 50,
+        customStages: custom.stages.map(s => ({
+          dryMass: s.dryMass,
+          fuelMass: s.fuelMass,
+          burnRate: s.burnRate,
+          exhaustVelocity: s.exhaustVelocity || s.isp * G0,
+          referenceArea: s.referenceArea,
+          dragCoefficient: s.dragCoefficient,
+        })),
+      });
+      return;
+    }
     if (!selectedRocket) return;
     onLaunch({
       rocketId: selectedRocket,
@@ -107,7 +145,7 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
             {rockets.map(rocket => (
               <button
                 key={rocket.id}
-                onClick={() => setSelectedRocket(rocket.id)}
+                onClick={() => { setSelectedRocket(rocket.id); setSelectedCustom(''); }}
                 style={{
                   padding: '14px 10px',
                   border: selectedRocket === rocket.id
@@ -138,7 +176,7 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
         </div>
 
         {/* Launch controls */}
-        {selectedRocket && (
+        {(selectedRocket || selectedCustom) && (
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -219,8 +257,43 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
           BUILD CUSTOM ROCKET
         </button>
 
-        {/* Past launches */}
-        <SimulationHistory onReplay={onReplay} />
+        {/* Saved custom rockets */}
+        {customRockets.length > 0 && (
+          <div style={{ width: '100%', maxWidth: '800px', marginTop: '8px' }}>
+            <div style={{ fontSize: '11px', color: '#556', letterSpacing: '2px', marginBottom: '12px', textAlign: 'center' }}>
+              YOUR CUSTOM ROCKETS
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px' }}>
+              {customRockets.map(cr => (
+                <div
+                  key={cr.id}
+                  onClick={() => { setSelectedCustom(cr.id); setSelectedRocket(''); }}
+                  style={{
+                    padding: '12px 10px',
+                    border: selectedCustom === cr.id ? '1px solid #ffaa00' : '1px solid #1a1a2e',
+                    borderRadius: '8px',
+                    background: selectedCustom === cr.id ? 'rgba(255,170,0,0.08)' : 'rgba(255,255,255,0.02)',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    position: 'relative',
+                  }}
+                >
+                  <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>{cr.name}</div>
+                  <div style={{ fontSize: '10px', color: '#667' }}>{cr.stageCount} stage{cr.stageCount !== 1 ? 's' : ''}</div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDeleteCustom(cr.id); }}
+                    style={{
+                      position: 'absolute', top: '4px', right: '4px',
+                      background: 'none', border: 'none', color: '#553', cursor: 'pointer', fontSize: '10px',
+                    }}
+                  >
+                    x
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Bottom features */}

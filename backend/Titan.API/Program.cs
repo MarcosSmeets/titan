@@ -1,9 +1,15 @@
+using Microsoft.EntityFrameworkCore;
+using Titan.API.Data;
 using Titan.API.Hubs;
 using Titan.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton<SimulationStore>();
+var dbPath = Path.Combine(AppContext.BaseDirectory, "titan.db");
+builder.Services.AddDbContext<TitanDbContext>(options =>
+    options.UseSqlite($"Data Source={dbPath}"));
+
+builder.Services.AddScoped<SimulationStore>();
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddEndpointsApiExplorer();
@@ -21,6 +27,13 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Auto-create/migrate database
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<TitanDbContext>();
+    db.Database.EnsureCreated();
+}
 
 if (app.Environment.IsDevelopment())
 {

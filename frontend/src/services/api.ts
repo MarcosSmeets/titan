@@ -1,4 +1,4 @@
-import type { RocketPreset, SimulationRequest, SimulationResult, SavedSimulation, SavedSimulationDetail } from '../types';
+import type { RocketPreset, SimulationRequest, SimulationResult, SavedSimulation, SavedSimulationDetail, CustomRocket } from '../types';
 
 const API_BASE = '/api';
 
@@ -52,4 +52,26 @@ export async function fetchSimulationById(id: string): Promise<SavedSimulationDe
 export async function deleteSimulation(id: string): Promise<void> {
   const res = await fetch(`${API_BASE}/simulations/${id}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('Failed to delete simulation');
+}
+
+// Custom rockets
+export async function fetchCustomRockets(): Promise<CustomRocket[]> {
+  const res = await fetch(`${API_BASE}/custom-rockets`);
+  if (!res.ok) throw new Error('Failed to fetch custom rockets');
+  return res.json();
+}
+
+export async function saveCustomRocket(name: string, stages: CustomRocket['stages']): Promise<{ id: string; name: string }> {
+  const res = await fetch(`${API_BASE}/custom-rockets`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, stages }),
+  });
+  if (!res.ok) throw new Error('Failed to save custom rocket');
+  return res.json();
+}
+
+export async function deleteCustomRocket(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/custom-rockets/${id}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Failed to delete custom rocket');
 }

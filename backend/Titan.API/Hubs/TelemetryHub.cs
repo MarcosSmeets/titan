@@ -10,11 +10,11 @@ public class TelemetryHub : Hub
     private const double EarthRadius = 6371000.0;
     private const double Mu = 3.986e14;
 
-    private readonly SimulationStore _store;
+    private readonly IServiceProvider _serviceProvider;
 
-    public TelemetryHub(SimulationStore store)
+    public TelemetryHub(IServiceProvider serviceProvider)
     {
-        _store = store;
+        _serviceProvider = serviceProvider;
     }
 
     public async Task RunSimulation(SimulationRequest request)
@@ -199,6 +199,8 @@ public class TelemetryHub : Hub
     private string SaveSimulation(string? rocketId, string rocketName, double targetAltitude,
         bool orbitAchieved, double finalTime, List<TelemetryPoint> telemetry, List<StageEventRecord> events)
     {
+        using var scope = _serviceProvider.CreateScope();
+        var store = scope.ServiceProvider.GetRequiredService<SimulationStore>();
         var saved = new SavedSimulation
         {
             RocketId = rocketId,
@@ -209,7 +211,7 @@ public class TelemetryHub : Hub
             Telemetry = telemetry,
             Events = events
         };
-        return _store.Save(saved);
+        return store.Save(saved);
     }
 
     private static List<StageRequest>? ResolveStages(SimulationRequest request)

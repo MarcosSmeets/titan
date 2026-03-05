@@ -83,6 +83,11 @@ export interface SavedSimulation {
   targetAltitude: number;
   orbitAchieved: boolean;
   finalTime: number;
+  maxAltitude: number;
+  maxVelocity: number;
+  finalApoapsis: number;
+  finalPeriapsis: number;
+  finalEccentricity: number;
   createdAt: string;
   telemetryCount: number;
   eventsCount: number;
@@ -99,3 +104,24 @@ export interface SavedSimulationDetail {
   events: StageEvent[];
   createdAt: string;
 }
+
+export interface CustomRocket {
+  id: string;
+  name: string;
+  createdAt: string;
+  stageCount: number;
+  stages: CustomRocketStage[];
+}
+
+export interface CustomRocketStage {
+  stageIndex: number;
+  dryMass: number;
+  fuelMass: number;
+  burnRate: number;
+  exhaustVelocity: number;
+  isp: number;
+  referenceArea: number;
+  dragCoefficient: number;
+}
+
+export type AppPage = 'launch' | 'simulation' | 'history' | 'how-it-works';

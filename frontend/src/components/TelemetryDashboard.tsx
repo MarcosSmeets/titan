@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, ReferenceLine,
+  Tooltip, ResponsiveContainer, ReferenceLine, Legend,
 } from 'recharts';
 import type { TelemetryPoint, StageEvent } from '../types';
 
@@ -12,49 +12,28 @@ interface TelemetryDashboardProps {
   compact?: boolean;
 }
 
-interface CollapsibleSectionProps {
+function CollapsibleChart({ title, defaultOpen = true, accent, children }: {
   title: string;
   defaultOpen?: boolean;
   accent?: string;
   children: React.ReactNode;
-}
-
-function CollapsibleSection({ title, defaultOpen = true, accent, children }: CollapsibleSectionProps) {
+}) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div style={sectionStyle}>
+    <div style={chartBoxStyle}>
       <button
         onClick={() => setOpen(o => !o)}
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          width: '100%',
-          background: 'none',
-          border: 'none',
-          padding: 0,
-          cursor: 'pointer',
-          color: accent || '#556',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: accent || '#667',
         }}
       >
-        <span style={{
-          fontSize: '9px',
-          letterSpacing: '1.5px',
-          fontWeight: 700,
-          textTransform: 'uppercase',
-        }}>
-          {title}
-        </span>
-        <span style={{
-          fontSize: '10px',
-          color: '#445',
-          transition: 'transform 0.2s',
-          transform: open ? 'rotate(0deg)' : 'rotate(-90deg)',
-        }}>
-          ▼
+        <span style={{ fontSize: '10px', letterSpacing: '1.5px', fontWeight: 700 }}>{title}</span>
+        <span style={{ fontSize: '10px', color: '#445', transition: 'transform 0.2s', transform: open ? 'rotate(0)' : 'rotate(-90deg)' }}>
+          {open ? '▼' : '▶'}
         </span>
       </button>
-      {open && <div style={{ marginTop: '8px' }}>{children}</div>}
+      {open && <div style={{ marginTop: '10px' }}>{children}</div>}
     </div>
   );
 }
@@ -69,261 +48,178 @@ export default function TelemetryDashboard({ telemetry, events, isLive, compact 
     eccentricity: t.eccentricity,
     inclination: t.inclination * 180 / Math.PI,
     semiMajorAxis: t.semiMajorAxis / 1000,
-    downrangeKm: t.x / 1000,
-    altitudeKm: t.altitude / 1000,
+    downrange: t.x / 1000,
+    stageIndex: t.stageIndex,
   }));
 
   const latest = telemetry[telemetry.length - 1];
+  const stageTimes = (events || []).map(e => Math.round(e.time));
+  const chartHeight = compact ? 140 : 200;
 
-  // Compute derived values
-  const maxAlt = telemetry.length > 0 ? Math.max(...telemetry.map(t => t.altitude)) / 1000 : 0;
-  const maxVel = telemetry.length > 0 ? Math.max(...telemetry.map(t => t.velocity)) : 0;
-  const maxQ = telemetry.length > 0 ? Math.max(...telemetry.map(t => t.velocity * (t.altitude < 80000 ? 1 : 0))) : 0;
+  if (!latest) {
+    return (
+      <div style={{ padding: '40px', textAlign: 'center', color: '#334', fontSize: '13px' }}>
+        Awaiting telemetry data...
+      </div>
+    );
+  }
 
-  // Stage event times for reference lines
-  const stageTimes = (events || []).map(e => e.time);
+  const maxAlt = Math.max(...telemetry.map(t => t.altitude)) / 1000;
+  const maxVel = Math.max(...telemetry.map(t => t.velocity));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      {/* Header */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingBottom: '4px',
-        borderBottom: '1px solid #151520',
-      }}>
-        <div style={{
-          fontSize: '11px',
-          color: '#667',
-          letterSpacing: '2px',
-          fontWeight: 700,
-        }}>
-          TELEMETRY
-        </div>
-        {isLive && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '5px',
-            fontSize: '10px',
-            color: '#44ff44',
-            fontWeight: 600,
-          }}>
-            <span style={{
-              width: 6, height: 6, borderRadius: '50%',
-              background: '#44ff44',
-              display: 'inline-block',
-              animation: 'pulse-dot 1s infinite',
-            }} />
-            LIVE
-          </div>
-        )}
-      </div>
-
-      {/* Primary metrics - always visible */}
-      {latest ? (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: '5px',
-        }}>
-          <DataCard label="ALTITUDE" value={fmtKm(latest.altitude)} color="#4488ff" large />
-          <DataCard label="VELOCITY" value={`${latest.velocity.toFixed(0)} m/s`} color="#ff4488" large />
-          <DataCard label="APOAPSIS" value={fmtKm(latest.apoapsis)} color="#44cc66" />
-          <DataCard label="PERIAPSIS" value={fmtKm(latest.periapsis)} color="#ff8844" />
-        </div>
-      ) : (
-        <div style={{ padding: '20px', textAlign: 'center', color: '#334', fontSize: '12px' }}>
-          Awaiting telemetry data...
-        </div>
-      )}
-
-      {/* Orbital Parameters - collapsible */}
-      {latest && (
-        <CollapsibleSection title="Orbital Parameters" accent="#aa88ff">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '5px' }}>
-            <DataCard label="ECCENTRICITY" value={latest.eccentricity.toFixed(5)} color="#aa44ff" />
-            <DataCard label="INCLINATION" value={`${(latest.inclination * 180 / Math.PI).toFixed(2)}°`} color="#ff88aa" />
-            <DataCard label="SEMI-MAJOR AXIS" value={fmtKm(latest.semiMajorAxis)} color="#44aaff" />
-            <DataCard label="RAAN" value={`${(latest.raan * 180 / Math.PI).toFixed(2)}°`} color="#88ccff" />
-          </div>
-        </CollapsibleSection>
-      )}
-
-      {/* Mission Stats - collapsible */}
-      {latest && (
-        <CollapsibleSection title="Mission Stats" defaultOpen={!compact} accent="#ffaa44">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '5px' }}>
-            <DataCard label="T+" value={fmtTime(latest.time)} color="#4488ff" />
-            <DataCard label="MAX ALT" value={`${maxAlt.toFixed(1)} km`} color="#4488ff" />
-            <DataCard label="MAX VEL" value={`${maxVel.toFixed(0)} m/s`} color="#ff4488" />
-            <DataCard label="STAGE" value={`${latest.stageIndex + 1}`} color="#ffaa00" />
-            <DataCard label="DOWNRANGE" value={`${(latest.x / 1000).toFixed(1)} km`} color="#44cc88" />
-            <DataCard label="MAX-Q VEL" value={`${maxQ.toFixed(0)} m/s`} color="#ff8844" />
-          </div>
-        </CollapsibleSection>
-      )}
-
-      {/* Events log - collapsible */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {/* Events timeline */}
       {events && events.length > 0 && (
-        <CollapsibleSection title={`Events (${events.length})`} defaultOpen={!compact} accent="#ffaa00">
-          <div style={{ maxHeight: '120px', overflowY: 'auto' }}>
+        <CollapsibleChart title={`MISSION EVENTS (${events.length})`} accent="#ffaa00">
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             {events.map((e, i) => (
               <div key={i} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '3px 0',
-                fontSize: '10px',
-                borderBottom: i < events.length - 1 ? '1px solid #0d0d1a' : 'none',
+                padding: '6px 12px',
+                background: '#0c0c18',
+                borderRadius: '6px',
+                border: '1px solid #1a1a2e',
+                display: 'flex', alignItems: 'center', gap: '8px',
               }}>
-                <span style={{
-                  color: '#ffaa00',
-                  fontFamily: 'monospace',
-                  fontSize: '9px',
-                  minWidth: '48px',
-                  flexShrink: 0,
-                }}>
+                <span style={{ color: '#ffaa00', fontFamily: 'monospace', fontSize: '11px', fontWeight: 600 }}>
                   T+{fmtTime(e.time)}
                 </span>
-                <span style={{ color: '#bbc' }}>{e.description}</span>
+                <span style={{ color: '#bbc', fontSize: '11px' }}>{e.description}</span>
               </div>
             ))}
           </div>
-        </CollapsibleSection>
+        </CollapsibleChart>
       )}
+
+      {/* Mission stats summary row */}
+      <div style={chartBoxStyle}>
+        <div style={{ fontSize: '10px', color: '#667', letterSpacing: '1.5px', fontWeight: 700, marginBottom: '10px' }}>
+          MISSION SUMMARY
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px' }}>
+          <MiniStat label="Max Altitude" value={`${maxAlt.toFixed(1)} km`} color="#4488ff" />
+          <MiniStat label="Max Velocity" value={`${maxVel.toFixed(0)} m/s`} color="#ff4488" />
+          <MiniStat label="Final Apoapsis" value={`${(latest.apoapsis / 1000).toFixed(1)} km`} color="#44cc66" />
+          <MiniStat label="Final Periapsis" value={`${(latest.periapsis / 1000).toFixed(1)} km`} color="#ff8844" />
+          <MiniStat label="Eccentricity" value={latest.eccentricity.toFixed(5)} color="#aa44ff" />
+          <MiniStat label="Semi-Major Axis" value={fmtKm(latest.semiMajorAxis)} color="#44aaff" />
+          <MiniStat label="Inclination" value={`${(latest.inclination * 180 / Math.PI).toFixed(2)}°`} color="#ff88aa" />
+          <MiniStat label="RAAN" value={`${(latest.raan * 180 / Math.PI).toFixed(2)}°`} color="#88ccff" />
+          <MiniStat label="Downrange" value={`${(latest.x / 1000).toFixed(1)} km`} color="#44cc88" />
+          <MiniStat label="Stage" value={`${latest.stageIndex + 1}`} color="#ffaa00" />
+        </div>
+      </div>
 
       {/* Altitude & Orbit chart */}
       {chartData.length > 1 && (
-        <CollapsibleSection title="Altitude & Orbit" accent="#4488ff">
-          <ResponsiveContainer width="100%" height={compact ? 110 : 140}>
-            <LineChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: -15 }}>
+        <CollapsibleChart title="ALTITUDE & ORBIT (km)" accent="#4488ff">
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <LineChart data={chartData} margin={{ top: 5, right: 10, bottom: 0, left: -5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#111118" />
-              <XAxis dataKey="time" stroke="#333" fontSize={8} tickFormatter={t => `${t}s`} />
-              <YAxis stroke="#333" fontSize={8} />
+              <XAxis dataKey="time" stroke="#333" fontSize={10} tickFormatter={t => `${t}s`} />
+              <YAxis stroke="#333" fontSize={10} />
               {stageTimes.map((t, i) => (
-                <ReferenceLine key={i} x={Math.round(t)} stroke="#ffaa00" strokeDasharray="2 3" strokeWidth={0.5} />
+                <ReferenceLine key={i} x={t} stroke="#ffaa00" strokeDasharray="2 3" strokeWidth={0.5} label={{ value: `S${i + 2}`, fill: '#ffaa00', fontSize: 9 }} />
               ))}
-              <Tooltip
-                contentStyle={tooltipStyle}
-                labelFormatter={v => `T+${v}s`}
-              />
-              <Line type="monotone" dataKey="altitude" stroke="#4488ff" dot={false} strokeWidth={1.5} name="Altitude" />
-              <Line type="monotone" dataKey="apoapsis" stroke="#44cc66" dot={false} strokeWidth={1} name="Apoapsis" />
-              <Line type="monotone" dataKey="periapsis" stroke="#ff8844" dot={false} strokeWidth={1} name="Periapsis" />
+              <Tooltip contentStyle={tooltipStyle} labelFormatter={v => `T+${v}s`} />
+              <Legend wrapperStyle={{ fontSize: '10px' }} />
+              <Line type="monotone" dataKey="altitude" stroke="#4488ff" dot={false} strokeWidth={2} name="Altitude" />
+              <Line type="monotone" dataKey="apoapsis" stroke="#44cc66" dot={false} strokeWidth={1.5} name="Apoapsis" />
+              <Line type="monotone" dataKey="periapsis" stroke="#ff8844" dot={false} strokeWidth={1.5} name="Periapsis" />
             </LineChart>
           </ResponsiveContainer>
-        </CollapsibleSection>
+        </CollapsibleChart>
       )}
 
       {/* Velocity chart */}
       {chartData.length > 1 && (
-        <CollapsibleSection title="Velocity" accent="#ff4488">
-          <ResponsiveContainer width="100%" height={compact ? 90 : 120}>
-            <LineChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: -15 }}>
+        <CollapsibleChart title="VELOCITY (m/s)" accent="#ff4488">
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <LineChart data={chartData} margin={{ top: 5, right: 10, bottom: 0, left: -5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#111118" />
-              <XAxis dataKey="time" stroke="#333" fontSize={8} tickFormatter={t => `${t}s`} />
-              <YAxis stroke="#333" fontSize={8} />
+              <XAxis dataKey="time" stroke="#333" fontSize={10} tickFormatter={t => `${t}s`} />
+              <YAxis stroke="#333" fontSize={10} />
               {stageTimes.map((t, i) => (
-                <ReferenceLine key={i} x={Math.round(t)} stroke="#ffaa00" strokeDasharray="2 3" strokeWidth={0.5} />
+                <ReferenceLine key={i} x={t} stroke="#ffaa00" strokeDasharray="2 3" strokeWidth={0.5} />
               ))}
-              <Tooltip
-                contentStyle={tooltipStyle}
-                labelFormatter={v => `T+${v}s`}
-              />
-              <Line type="monotone" dataKey="velocity" stroke="#ff4488" dot={false} strokeWidth={1.5} name="Velocity (m/s)" />
+              <Tooltip contentStyle={tooltipStyle} labelFormatter={v => `T+${v}s`} />
+              <Line type="monotone" dataKey="velocity" stroke="#ff4488" dot={false} strokeWidth={2} name="Velocity" />
             </LineChart>
           </ResponsiveContainer>
-        </CollapsibleSection>
+        </CollapsibleChart>
       )}
 
       {/* Eccentricity chart */}
       {chartData.length > 1 && (
-        <CollapsibleSection title="Eccentricity" defaultOpen={!compact} accent="#aa44ff">
-          <ResponsiveContainer width="100%" height={compact ? 80 : 100}>
-            <LineChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: -15 }}>
+        <CollapsibleChart title="ECCENTRICITY" defaultOpen={!compact} accent="#aa44ff">
+          <ResponsiveContainer width="100%" height={compact ? 120 : 160}>
+            <LineChart data={chartData} margin={{ top: 5, right: 10, bottom: 0, left: -5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#111118" />
-              <XAxis dataKey="time" stroke="#333" fontSize={8} tickFormatter={t => `${t}s`} />
-              <YAxis stroke="#333" fontSize={8} domain={[0, 'auto']} />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                labelFormatter={v => `T+${v}s`}
-              />
-              <Line type="monotone" dataKey="eccentricity" stroke="#aa44ff" dot={false} strokeWidth={1.5} name="e" />
+              <XAxis dataKey="time" stroke="#333" fontSize={10} tickFormatter={t => `${t}s`} />
+              <YAxis stroke="#333" fontSize={10} domain={[0, 'auto']} />
+              {stageTimes.map((t, i) => (
+                <ReferenceLine key={i} x={t} stroke="#ffaa00" strokeDasharray="2 3" strokeWidth={0.5} />
+              ))}
+              <Tooltip contentStyle={tooltipStyle} labelFormatter={v => `T+${v}s`} />
+              <Line type="monotone" dataKey="eccentricity" stroke="#aa44ff" dot={false} strokeWidth={2} name="Eccentricity" />
             </LineChart>
           </ResponsiveContainer>
-        </CollapsibleSection>
+        </CollapsibleChart>
       )}
 
       {/* Inclination chart */}
       {chartData.length > 1 && (
-        <CollapsibleSection title="Inclination" defaultOpen={false} accent="#ff88aa">
-          <ResponsiveContainer width="100%" height={compact ? 80 : 100}>
-            <LineChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: -15 }}>
+        <CollapsibleChart title="INCLINATION (deg)" defaultOpen={false} accent="#ff88aa">
+          <ResponsiveContainer width="100%" height={compact ? 120 : 160}>
+            <LineChart data={chartData} margin={{ top: 5, right: 10, bottom: 0, left: -5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#111118" />
-              <XAxis dataKey="time" stroke="#333" fontSize={8} tickFormatter={t => `${t}s`} />
-              <YAxis stroke="#333" fontSize={8} unit="°" />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                labelFormatter={v => `T+${v}s`}
-                formatter={(v: number) => [`${v.toFixed(2)}°`, 'Inclination']}
-              />
-              <Line type="monotone" dataKey="inclination" stroke="#ff88aa" dot={false} strokeWidth={1.5} name="Inc" />
+              <XAxis dataKey="time" stroke="#333" fontSize={10} tickFormatter={t => `${t}s`} />
+              <YAxis stroke="#333" fontSize={10} unit="°" />
+              <Tooltip contentStyle={tooltipStyle} labelFormatter={v => `T+${v}s`} formatter={(v: number) => [`${v.toFixed(2)}°`, 'Inclination']} />
+              <Line type="monotone" dataKey="inclination" stroke="#ff88aa" dot={false} strokeWidth={2} name="Inclination" />
             </LineChart>
           </ResponsiveContainer>
-        </CollapsibleSection>
+        </CollapsibleChart>
       )}
 
-      <style>{`
-        @keyframes pulse-dot {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
-      `}</style>
+      {/* Semi-major axis chart */}
+      {chartData.length > 1 && (
+        <CollapsibleChart title="SEMI-MAJOR AXIS (km)" defaultOpen={false} accent="#44aaff">
+          <ResponsiveContainer width="100%" height={compact ? 120 : 160}>
+            <LineChart data={chartData} margin={{ top: 5, right: 10, bottom: 0, left: -5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#111118" />
+              <XAxis dataKey="time" stroke="#333" fontSize={10} tickFormatter={t => `${t}s`} />
+              <YAxis stroke="#333" fontSize={10} />
+              <Tooltip contentStyle={tooltipStyle} labelFormatter={v => `T+${v}s`} />
+              <Line type="monotone" dataKey="semiMajorAxis" stroke="#44aaff" dot={false} strokeWidth={2} name="Semi-Major Axis" />
+            </LineChart>
+          </ResponsiveContainer>
+        </CollapsibleChart>
+      )}
+
+      {/* Downrange distance chart */}
+      {chartData.length > 1 && (
+        <CollapsibleChart title="DOWNRANGE DISTANCE (km)" defaultOpen={false} accent="#44cc88">
+          <ResponsiveContainer width="100%" height={compact ? 120 : 160}>
+            <LineChart data={chartData} margin={{ top: 5, right: 10, bottom: 0, left: -5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#111118" />
+              <XAxis dataKey="time" stroke="#333" fontSize={10} tickFormatter={t => `${t}s`} />
+              <YAxis stroke="#333" fontSize={10} />
+              <Tooltip contentStyle={tooltipStyle} labelFormatter={v => `T+${v}s`} />
+              <Line type="monotone" dataKey="downrange" stroke="#44cc88" dot={false} strokeWidth={2} name="Downrange" />
+            </LineChart>
+          </ResponsiveContainer>
+        </CollapsibleChart>
+      )}
     </div>
   );
 }
 
-function DataCard({
-  label,
-  value,
-  color,
-  large,
-}: {
-  label: string;
-  value: string;
-  color?: string;
-  large?: boolean;
-}) {
+function MiniStat({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div style={{
-      padding: large ? '8px 6px' : '6px 5px',
-      background: '#080812',
-      borderRadius: '5px',
-      border: '1px solid #12121e',
-      overflow: 'hidden',
-    }}>
-      <div style={{
-        fontSize: '8px',
-        color: '#445',
-        letterSpacing: '0.8px',
-        marginBottom: '2px',
-        fontWeight: 600,
-      }}>
-        {label}
-      </div>
-      <div style={{
-        fontSize: large ? '15px' : '12px',
-        color: color || '#aab',
-        fontFamily: 'monospace',
-        fontWeight: large ? 700 : 500,
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-      }}>
-        {value}
-      </div>
+    <div style={{ padding: '6px 8px', background: '#080812', borderRadius: '5px', border: '1px solid #12121e' }}>
+      <div style={{ fontSize: '8px', color: '#556', letterSpacing: '0.8px', marginBottom: '2px' }}>{label}</div>
+      <div style={{ fontSize: '13px', color, fontFamily: 'monospace', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
     </div>
   );
 }
@@ -340,16 +236,16 @@ function fmtTime(seconds: number): string {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
-const sectionStyle: React.CSSProperties = {
+const chartBoxStyle: React.CSSProperties = {
   background: '#0a0a16',
-  borderRadius: '6px',
-  padding: '8px 10px',
-  border: '1px solid #12121e',
+  borderRadius: '8px',
+  padding: '12px 16px',
+  border: '1px solid #151520',
 };
 
 const tooltipStyle: React.CSSProperties = {
   background: '#0a0a18',
   border: '1px solid #1a1a2a',
-  fontSize: '10px',
+  fontSize: '11px',
   borderRadius: '4px',
 };

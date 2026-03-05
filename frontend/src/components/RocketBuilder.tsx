@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { saveCustomRocket } from '../services/api';
 import type { SimulationRequest, StageRequest } from '../types';
 
 const G0 = 9.80665;
@@ -69,6 +70,29 @@ export default function RocketBuilderModal({ onClose, onLaunch }: RocketBuilderP
 
   const totalDeltaV = stats.reduce((sum, s) => sum + s.deltaV, 0);
 
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await saveCustomRocket(name, activeStages.map((s, i) => ({
+        stageIndex: i,
+        dryMass: s.dryMass,
+        fuelMass: s.fuelMass,
+        burnRate: s.burnRate,
+        exhaustVelocity: s.isp * G0,
+        isp: s.isp,
+        referenceArea: s.refArea,
+        dragCoefficient: s.cd,
+      })));
+      alert('Rocket saved!');
+    } catch {
+      alert('Failed to save rocket');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleLaunch = () => {
     const customStages: StageRequest[] = activeStages.map(s => ({
       dryMass: s.dryMass,
@@ -78,6 +102,18 @@ export default function RocketBuilderModal({ onClose, onLaunch }: RocketBuilderP
       referenceArea: s.refArea,
       dragCoefficient: s.cd,
     }));
+
+    // Also save to database
+    saveCustomRocket(name, activeStages.map((s, i) => ({
+      stageIndex: i,
+      dryMass: s.dryMass,
+      fuelMass: s.fuelMass,
+      burnRate: s.burnRate,
+      exhaustVelocity: s.isp * G0,
+      isp: s.isp,
+      referenceArea: s.refArea,
+      dragCoefficient: s.cd,
+    }))).catch(() => {});
 
     onLaunch({
       targetAltitude: targetAlt * 1000,
@@ -211,25 +247,45 @@ export default function RocketBuilderModal({ onClose, onLaunch }: RocketBuilderP
           </div>
         </div>
 
-        {/* Launch */}
-        <button
-          onClick={handleLaunch}
-          style={{
-            width: '100%',
-            padding: '14px',
-            background: 'linear-gradient(135deg, #ff3333, #cc2200)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '8px',
-            fontWeight: 700,
-            fontSize: '16px',
-            cursor: 'pointer',
-            letterSpacing: '3px',
-            boxShadow: '0 4px 20px rgba(255,50,50,0.3)',
-          }}
-        >
-          LAUNCH {name.toUpperCase()}
-        </button>
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            style={{
+              flex: 1,
+              padding: '14px',
+              background: 'rgba(68,136,255,0.1)',
+              color: '#4488ff',
+              border: '1px solid rgba(68,136,255,0.3)',
+              borderRadius: '8px',
+              fontWeight: 700,
+              fontSize: '14px',
+              cursor: 'pointer',
+              letterSpacing: '2px',
+            }}
+          >
+            {saving ? 'SAVING...' : 'SAVE ROCKET'}
+          </button>
+          <button
+            onClick={handleLaunch}
+            style={{
+              flex: 2,
+              padding: '14px',
+              background: 'linear-gradient(135deg, #ff3333, #cc2200)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: 700,
+              fontSize: '16px',
+              cursor: 'pointer',
+              letterSpacing: '3px',
+              boxShadow: '0 4px 20px rgba(255,50,50,0.3)',
+            }}
+          >
+            LAUNCH
+          </button>
+        </div>
       </div>
     </div>
   );

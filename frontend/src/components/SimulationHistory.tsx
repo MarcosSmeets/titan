@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchSimulations, fetchSimulationById, deleteSimulation } from '../services/api';
-import type { SavedSimulation, SavedSimulationDetail, TelemetryPoint, StageEvent } from '../types';
+import type { SavedSimulation, TelemetryPoint, StageEvent } from '../types';
 
 interface SimulationHistoryProps {
   onReplay: (telemetry: TelemetryPoint[], events: StageEvent[], rocketName: string, orbitAchieved: boolean, finalTime: number) => void;
@@ -44,73 +44,94 @@ export default function SimulationHistory({ onReplay }: SimulationHistoryProps) 
     load();
   };
 
-  if (simulations.length === 0 && !loading) return null;
+  const successCount = simulations.filter(s => s.orbitAchieved).length;
+  const failCount = simulations.filter(s => !s.orbitAchieved).length;
+  const successRate = simulations.length > 0 ? ((successCount / simulations.length) * 100).toFixed(1) : '0';
 
   return (
-    <div style={{
-      width: '100%',
-      maxWidth: '800px',
-      marginTop: '24px',
-    }}>
-      <div style={{
-        fontSize: '11px',
-        color: '#556',
-        letterSpacing: '2px',
-        marginBottom: '12px',
-        textAlign: 'center',
-      }}>
-        PAST LAUNCHES
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+        <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 600, letterSpacing: '1px' }}>
+          Launch History
+        </h2>
+        <button onClick={load} style={refreshBtnStyle}>Refresh</button>
       </div>
 
-      {loading && (
-        <div style={{ textAlign: 'center', color: '#445', fontSize: '12px' }}>Loading...</div>
+      {/* Stats row */}
+      {simulations.length > 0 && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+          gap: '10px',
+          marginBottom: '20px',
+        }}>
+          <StatCard label="TOTAL LAUNCHES" value={String(simulations.length)} color="#4488ff" />
+          <StatCard label="ORBITS ACHIEVED" value={String(successCount)} color="#22aa44" />
+          <StatCard label="FAILED" value={String(failCount)} color="#ff4444" />
+          <StatCard label="SUCCESS RATE" value={`${successRate}%`} color={parseFloat(successRate) >= 50 ? '#22aa44' : '#ff8844'} />
+        </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      {loading && (
+        <div style={{ textAlign: 'center', color: '#445', fontSize: '12px', padding: '20px' }}>Loading...</div>
+      )}
+
+      {!loading && simulations.length === 0 && (
+        <div style={{ textAlign: 'center', color: '#445', fontSize: '13px', padding: '40px' }}>
+          No past launches yet. Run a simulation to see results here.
+        </div>
+      )}
+
+      {/* Simulation list */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {simulations.map(sim => (
           <div
             key={sim.id}
             style={{
-              display: 'flex',
+              display: 'grid',
+              gridTemplateColumns: '8px 1fr auto',
+              gap: '14px',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '10px 14px',
-              background: 'rgba(255,255,255,0.02)',
-              border: '1px solid #1a1a2e',
+              padding: '12px 16px',
+              background: '#0a0a16',
+              border: '1px solid #151520',
               borderRadius: '8px',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: sim.orbitAchieved ? '#22aa44' : '#ff4444',
-              }} />
-              <div>
-                <div style={{ fontSize: '13px', fontWeight: 600 }}>{sim.rocketName}</div>
-                <div style={{ fontSize: '10px', color: '#556' }}>
-                  {new Date(sim.createdAt).toLocaleString()} &middot; {(sim.targetAltitude / 1000).toFixed(0)} km target
-                </div>
+            {/* Status dot */}
+            <div style={{
+              width: 8, height: 8, borderRadius: '50%',
+              background: sim.orbitAchieved ? '#22aa44' : '#ff4444',
+            }} />
+
+            {/* Info */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 600 }}>{sim.rocketName}</span>
+                <span style={{
+                  fontSize: '10px', fontWeight: 600, letterSpacing: '0.5px',
+                  color: sim.orbitAchieved ? '#22aa44' : '#ff4444',
+                }}>
+                  {sim.orbitAchieved ? 'ORBIT' : 'FAIL'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '16px', fontSize: '11px', color: '#667', flexWrap: 'wrap' }}>
+                <span>Target: {(sim.targetAltitude / 1000).toFixed(0)} km</span>
+                <span>Time: {fmtTime(sim.finalTime)}</span>
+                <span>Max Alt: {(sim.maxAltitude / 1000).toFixed(1)} km</span>
+                <span>Max Vel: {sim.maxVelocity.toFixed(0)} m/s</span>
+                <span>Ecc: {sim.finalEccentricity.toFixed(4)}</span>
+                <span>{new Date(sim.createdAt).toLocaleString()}</span>
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{
-                fontSize: '11px',
-                color: sim.orbitAchieved ? '#22aa44' : '#ff4444',
-                fontWeight: 600,
-              }}>
-                {sim.orbitAchieved ? 'ORBIT' : 'FAIL'}
-              </span>
-              <span style={{ fontSize: '11px', color: '#667', fontFamily: 'monospace' }}>
-                {Math.floor(sim.finalTime / 60)}:{String(Math.floor(sim.finalTime % 60)).padStart(2, '0')}
-              </span>
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: '8px' }}>
               <button
                 onClick={() => handleReplay(sim.id)}
                 disabled={loadingId === sim.id}
                 style={{
-                  padding: '4px 12px',
+                  padding: '5px 14px',
                   background: 'rgba(68,136,255,0.1)',
                   border: '1px solid rgba(68,136,255,0.3)',
                   borderRadius: '4px',
@@ -120,12 +141,12 @@ export default function SimulationHistory({ onReplay }: SimulationHistoryProps) 
                   fontWeight: 600,
                 }}
               >
-                {loadingId === sim.id ? '...' : 'REPLAY'}
+                {loadingId === sim.id ? '...' : 'VIEW'}
               </button>
               <button
                 onClick={() => handleDelete(sim.id)}
                 style={{
-                  padding: '4px 8px',
+                  padding: '5px 8px',
                   background: 'none',
                   border: '1px solid rgba(255,68,68,0.2)',
                   borderRadius: '4px',
@@ -143,3 +164,33 @@ export default function SimulationHistory({ onReplay }: SimulationHistoryProps) 
     </div>
   );
 }
+
+function StatCard({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div style={{
+      padding: '12px 14px',
+      background: '#0a0a16',
+      borderRadius: '8px',
+      border: '1px solid #151520',
+    }}>
+      <div style={{ fontSize: '9px', color: '#556', letterSpacing: '1px', marginBottom: '4px', fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: '22px', fontFamily: 'monospace', fontWeight: 700, color }}>{value}</div>
+    </div>
+  );
+}
+
+function fmtTime(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+const refreshBtnStyle: React.CSSProperties = {
+  padding: '6px 14px',
+  background: 'rgba(255,255,255,0.05)',
+  border: '1px solid #1a1a2e',
+  borderRadius: '6px',
+  color: '#667',
+  cursor: 'pointer',
+  fontSize: '11px',
+};
