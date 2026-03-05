@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Titan.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+df5d963be87238e8b3c74bc9fc220db5e28cea32")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ddda10fc80772370f6bb73deb2bd0aa6f62ad92c")]
 [assembly: System.Reflection.AssemblyProductAttribute("Titan.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Titan.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
