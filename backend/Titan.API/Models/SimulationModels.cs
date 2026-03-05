@@ -9,6 +9,7 @@ public class SimulationRequest
     public double Duration { get; set; } = 900.0;
     public int IntegratorType { get; set; } = 2; // RK45 default
     public int GuidanceType { get; set; } = 0;
+    public double TimeWarp { get; set; } = 50.0; // Simulation seconds per real second
     public List<StageRequest>? CustomStages { get; set; }
 }
 

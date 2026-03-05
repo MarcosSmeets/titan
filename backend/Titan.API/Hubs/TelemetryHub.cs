@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 using Titan.API.Models;
 using Titan.API.Native;
+using Titan.API.Services;
 
 namespace Titan.API.Hubs;
 
@@ -9,14 +10,37 @@ public class TelemetryHub : Hub
     private const double EarthRadius = 6371000.0;
     private const double Mu = 3.986e14;
 
+    private readonly SimulationStore _store;
+
+    public TelemetryHub(SimulationStore store)
+    {
+        _store = store;
+    }
+
     public async Task RunSimulation(SimulationRequest request)
     {
         var stages = ResolveStages(request);
         if (stages == null || stages.Count == 0)
         {
-            await Clients.Caller.SendAsync("OnSimulationComplete", new { error = "No stages configured" });
+            await Clients.Caller.SendAsync("OnSimulationComplete", new
+            {
+                orbitAchieved = false,
+                finalTime = 0.0,
+                error = "No stages configured"
+            });
             return;
         }
+
+        var rocketName = request.RocketId != null
+            ? Controllers.RocketsController.FindPreset(request.RocketId)?.Name ?? request.RocketId
+            : "Custom Rocket";
+
+        await Clients.Caller.SendAsync("OnSimulationStart", new
+        {
+            rocketName,
+            targetAltitude = request.TargetAltitude,
+            duration = request.Duration
+        });
 
         var config = new TitanSimConfig
         {
@@ -32,6 +56,10 @@ public class TelemetryHub : Hub
             Rk45Hmin = 1e-6,
             Rk45Hmax = 10.0
         };
+
+        // Collect telemetry and events for saving
+        var savedTelemetry = new List<TelemetryPoint>();
+        var savedEvents = new List<StageEventRecord>();
 
         var sim = TitanInterop.titan_create_simulation(config);
         try
@@ -50,66 +78,138 @@ public class TelemetryHub : Hub
             }
 
             int totalSteps = (int)(request.Duration / request.Dt);
-            int telemetryInterval = Math.Max(1, (int)(1.0 / request.Dt)); // every 1s for real-time
+            double timeWarp = Math.Max(1.0, request.TimeWarp);
+
+            double pushIntervalSim = 1.0;
+            int delayMs = (int)(pushIntervalSim / timeWarp * 1000.0);
+            delayMs = Math.Max(16, delayMs);
+
+            int stepsPerPush = Math.Max(1, (int)(pushIntervalSim / request.Dt));
+
             int prevStage = 0;
+            TitanTelemetry lastTel = default;
 
             for (int i = 0; i < totalSteps; i++)
             {
-                var tel = TitanInterop.titan_step(sim);
+                lastTel = TitanInterop.titan_step(sim);
 
-                // Notify stage events
-                if (tel.StageIndex != prevStage)
+                if (lastTel.StageIndex != prevStage)
                 {
+                    var stageEvent = new StageEventRecord
+                    {
+                        Time = lastTel.Time,
+                        PreviousStage = prevStage,
+                        NewStage = lastTel.StageIndex,
+                        Description = $"Stage {prevStage + 1} separated"
+                    };
+                    savedEvents.Add(stageEvent);
+
                     await Clients.Caller.SendAsync("OnStageEvent", new
                     {
-                        time = tel.Time,
+                        time = lastTel.Time,
                         previousStage = prevStage,
-                        newStage = tel.StageIndex
+                        newStage = lastTel.StageIndex,
+                        description = stageEvent.Description
                     });
-                    prevStage = tel.StageIndex;
+                    prevStage = lastTel.StageIndex;
                 }
 
-                if (i % telemetryInterval == 0)
+                if (i % stepsPerPush == 0)
                 {
-                    await Clients.Caller.SendAsync("OnTelemetryUpdate", new TelemetryPoint
+                    var point = new TelemetryPoint
                     {
-                        Time = tel.Time,
-                        Altitude = tel.Altitude,
-                        Velocity = tel.Velocity,
-                        Apoapsis = tel.Apoapsis,
-                        Periapsis = tel.Periapsis,
-                        Eccentricity = tel.Eccentricity,
-                        Inclination = tel.Inclination,
-                        Raan = tel.Raan,
-                        SemiMajorAxis = tel.SemiMajorAxis,
-                        X = tel.State.X,
-                        Y = tel.State.Y,
-                        Z = tel.State.Z,
-                        StageIndex = tel.StageIndex
-                    });
+                        Time = lastTel.Time,
+                        Altitude = lastTel.Altitude,
+                        Velocity = lastTel.Velocity,
+                        Apoapsis = lastTel.Apoapsis,
+                        Periapsis = lastTel.Periapsis,
+                        Eccentricity = lastTel.Eccentricity,
+                        Inclination = lastTel.Inclination,
+                        Raan = lastTel.Raan,
+                        SemiMajorAxis = lastTel.SemiMajorAxis,
+                        X = lastTel.State.X,
+                        Y = lastTel.State.Y,
+                        Z = lastTel.State.Z,
+                        StageIndex = lastTel.StageIndex
+                    };
+                    savedTelemetry.Add(point);
+
+                    await Clients.Caller.SendAsync("OnTelemetryUpdate", point);
+
+                    if (delayMs > 0)
+                    {
+                        await Task.Delay(delayMs, Context.ConnectionAborted);
+                    }
                 }
 
-                if (tel.IsComplete != 0)
+                if (lastTel.IsComplete != 0)
                 {
+                    var finalPoint = new TelemetryPoint
+                    {
+                        Time = lastTel.Time,
+                        Altitude = lastTel.Altitude,
+                        Velocity = lastTel.Velocity,
+                        Apoapsis = lastTel.Apoapsis,
+                        Periapsis = lastTel.Periapsis,
+                        Eccentricity = lastTel.Eccentricity,
+                        Inclination = lastTel.Inclination,
+                        Raan = lastTel.Raan,
+                        SemiMajorAxis = lastTel.SemiMajorAxis,
+                        X = lastTel.State.X,
+                        Y = lastTel.State.Y,
+                        Z = lastTel.State.Z,
+                        StageIndex = lastTel.StageIndex
+                    };
+                    savedTelemetry.Add(finalPoint);
+                    await Clients.Caller.SendAsync("OnTelemetryUpdate", finalPoint);
+
+                    var simId = SaveSimulation(request.RocketId, rocketName, request.TargetAltitude,
+                        true, lastTel.Time, savedTelemetry, savedEvents);
+
                     await Clients.Caller.SendAsync("OnSimulationComplete", new
                     {
                         orbitAchieved = true,
-                        finalTime = tel.Time
+                        finalTime = lastTel.Time,
+                        simulationId = simId
                     });
                     return;
                 }
             }
 
+            var failId = SaveSimulation(request.RocketId, rocketName, request.TargetAltitude,
+                false, lastTel.Time, savedTelemetry, savedEvents);
+
             await Clients.Caller.SendAsync("OnSimulationComplete", new
             {
                 orbitAchieved = false,
-                finalTime = request.Duration
+                finalTime = lastTel.Time,
+                simulationId = failId
             });
+        }
+        catch (OperationCanceledException)
+        {
+            // Client disconnected
         }
         finally
         {
             TitanInterop.titan_destroy(sim);
         }
+    }
+
+    private string SaveSimulation(string? rocketId, string rocketName, double targetAltitude,
+        bool orbitAchieved, double finalTime, List<TelemetryPoint> telemetry, List<StageEventRecord> events)
+    {
+        var saved = new SavedSimulation
+        {
+            RocketId = rocketId,
+            RocketName = rocketName,
+            TargetAltitude = targetAltitude,
+            OrbitAchieved = orbitAchieved,
+            FinalTime = finalTime,
+            Telemetry = telemetry,
+            Events = events
+        };
+        return _store.Save(saved);
     }
 
     private static List<StageRequest>? ResolveStages(SimulationRequest request)

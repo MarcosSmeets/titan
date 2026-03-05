@@ -55,6 +55,7 @@ export interface SimulationRequest {
   duration: number;
   integratorType: number;
   guidanceType: number;
+  timeWarp: number;
   customStages?: StageRequest[];
 }
 
@@ -67,4 +68,34 @@ export interface StageRequest {
   dragCoefficient: number;
 }
 
-export type SimulationState = 'idle' | 'running' | 'complete' | 'error';
+export interface StageEvent {
+  time: number;
+  previousStage: number;
+  newStage: number;
+  description: string;
+}
+
+export type SimulationState = 'idle' | 'connecting' | 'running' | 'complete' | 'failed';
+
+export interface SavedSimulation {
+  id: string;
+  rocketName: string;
+  targetAltitude: number;
+  orbitAchieved: boolean;
+  finalTime: number;
+  createdAt: string;
+  telemetryCount: number;
+  eventsCount: number;
+}
+
+export interface SavedSimulationDetail {
+  id: string;
+  rocketId?: string;
+  rocketName: string;
+  targetAltitude: number;
+  orbitAchieved: boolean;
+  finalTime: number;
+  telemetry: TelemetryPoint[];
+  events: StageEvent[];
+  createdAt: string;
+}

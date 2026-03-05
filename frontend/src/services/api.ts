@@ -1,4 +1,4 @@
-import type { RocketPreset, SimulationRequest, SimulationResult } from '../types';
+import type { RocketPreset, SimulationRequest, SimulationResult, SavedSimulation, SavedSimulationDetail } from '../types';
 
 const API_BASE = '/api';
 
@@ -35,4 +35,21 @@ export async function compareRockets(
   });
   if (!res.ok) throw new Error('Comparison failed');
   return res.json();
+}
+
+export async function fetchSimulations(): Promise<SavedSimulation[]> {
+  const res = await fetch(`${API_BASE}/simulations`);
+  if (!res.ok) throw new Error('Failed to fetch simulations');
+  return res.json();
+}
+
+export async function fetchSimulationById(id: string): Promise<SavedSimulationDetail> {
+  const res = await fetch(`${API_BASE}/simulations/${id}`);
+  if (!res.ok) throw new Error('Simulation not found');
+  return res.json();
+}
+
+export async function deleteSimulation(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/simulations/${id}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Failed to delete simulation');
 }

@@ -1,0 +1,3 @@
+﻿<Project>
+  <Import Project="../build/Titan.API.props" />
+</Project>

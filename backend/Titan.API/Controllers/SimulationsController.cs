@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Titan.API.Models;
 using Titan.API.Native;
+using Titan.API.Services;
 
 namespace Titan.API.Controllers;
 
@@ -10,6 +11,45 @@ public class SimulationsController : ControllerBase
 {
     private const double EarthRadius = 6371000.0;
     private const double Mu = 3.986e14;
+
+    private readonly SimulationStore _store;
+
+    public SimulationsController(SimulationStore store)
+    {
+        _store = store;
+    }
+
+    [HttpGet]
+    public ActionResult<IEnumerable<object>> ListSimulations()
+    {
+        var sims = _store.GetAll().Select(s => new
+        {
+            s.Id,
+            s.RocketName,
+            s.TargetAltitude,
+            s.OrbitAchieved,
+            s.FinalTime,
+            s.CreatedAt,
+            telemetryCount = s.Telemetry.Count,
+            eventsCount = s.Events.Count,
+        });
+        return Ok(sims);
+    }
+
+    [HttpGet("{id}")]
+    public ActionResult<SavedSimulation> GetSimulation(string id)
+    {
+        var sim = _store.GetById(id);
+        if (sim == null) return NotFound();
+        return Ok(sim);
+    }
+
+    [HttpDelete("{id}")]
+    public ActionResult DeleteSimulation(string id)
+    {
+        if (!_store.Delete(id)) return NotFound();
+        return NoContent();
+    }
 
     [HttpPost]
     public ActionResult<SimulationResult> RunSimulation([FromBody] SimulationRequest request)
@@ -60,7 +100,7 @@ public class SimulationsController : ControllerBase
             };
 
             int totalSteps = (int)(request.Duration / request.Dt);
-            int telemetryInterval = Math.Max(1, (int)(5.0 / request.Dt)); // every 5s
+            int telemetryInterval = Math.Max(1, (int)(5.0 / request.Dt));
 
             for (int i = 0; i < totalSteps; i++)
             {
