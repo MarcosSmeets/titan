@@ -3,16 +3,6 @@
 
 namespace titan::math
 {
-    /*
-        Basic 3D vector class for physics calculations.
-
-        Provides:
-            - Magnitude
-            - Normalization
-            - Dot product
-            - Cross product
-            - Basic arithmetic
-    */
     struct Vector3
     {
         double x;
@@ -26,6 +16,11 @@ namespace titan::math
         double Magnitude() const
         {
             return std::sqrt(x * x + y * y + z * z);
+        }
+
+        double MagnitudeSquared() const
+        {
+            return x * x + y * y + z * z;
         }
 
         Vector3 Normalized() const
@@ -60,9 +55,56 @@ namespace titan::math
             return Vector3(x - other.x, y - other.y, z - other.z);
         }
 
+        Vector3 operator-() const
+        {
+            return Vector3(-x, -y, -z);
+        }
+
         Vector3 operator*(double scalar) const
         {
             return Vector3(x * scalar, y * scalar, z * scalar);
+        }
+
+        Vector3 operator/(double scalar) const
+        {
+            return Vector3(x / scalar, y / scalar, z / scalar);
+        }
+
+        Vector3 &operator+=(const Vector3 &other)
+        {
+            x += other.x;
+            y += other.y;
+            z += other.z;
+            return *this;
+        }
+
+        Vector3 &operator-=(const Vector3 &other)
+        {
+            x -= other.x;
+            y -= other.y;
+            z -= other.z;
+            return *this;
+        }
+
+        Vector3 &operator*=(double scalar)
+        {
+            x *= scalar;
+            y *= scalar;
+            z *= scalar;
+            return *this;
+        }
+
+        Vector3 &operator/=(double scalar)
+        {
+            x /= scalar;
+            y /= scalar;
+            z /= scalar;
+            return *this;
+        }
+
+        friend Vector3 operator*(double scalar, const Vector3 &v)
+        {
+            return Vector3(scalar * v.x, scalar * v.y, scalar * v.z);
         }
     };
 }

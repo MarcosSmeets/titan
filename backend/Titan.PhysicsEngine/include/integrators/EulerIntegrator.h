@@ -6,7 +6,7 @@ namespace titan::integrators
     class EulerIntegrator : public Integrator
     {
     public:
-        State Step(
+        StepResult Step(
             const State &current,
             double dt,
             std::function<Derivative(const State &)> derivativeFunc) override;

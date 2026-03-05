@@ -16,3 +16,7 @@ target_include_directories(TitanPhysicsEngine PUBLIC include)
 
 add_executable(TitanTest src/main.cpp)
 target_link_libraries(TitanTest TitanPhysicsEngine)
+
+# Test suite
+add_executable(TitanTests tests/test_main.cpp)
+target_link_libraries(TitanTests TitanPhysicsEngine)

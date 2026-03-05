@@ -147,16 +147,19 @@ namespace titan::simulation
             double ax_thrust = thrustX / totalMass;
             double ay_thrust = thrustY / totalMass;
 
+            d.dz = 0.0;
             d.dvx = ax_gravity + ax_thrust + ax_drag;
             d.dvy = ay_gravity + ay_thrust + ay_drag;
+            d.dvz = 0.0;
 
             return d;
         };
 
-        m_state = m_integrator->Step(
+        auto result = m_integrator->Step(
             m_state,
             dt,
             derivativeFunc);
+        m_state = result.state;
 
         SeparateStageIfNeeded();
     }
