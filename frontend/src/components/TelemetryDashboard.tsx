@@ -10,35 +10,92 @@ interface TelemetryDashboardProps {
   events?: StageEvent[];
   isLive?: boolean;
   compact?: boolean;
+  comparisons?: { name: string; telemetry: TelemetryPoint[]; color: string }[];
 }
 
-function CollapsibleChart({ title, defaultOpen = true, accent, children }: {
+const CHART_HELP: Record<string, string> = {
+  'ALTITUDE & ORBIT (km)':
+    'Altitude is the rocket\'s height above Earth\'s surface. Apoapsis is the highest point of the orbit, periapsis the lowest. For a stable orbit, both must be above ~120 km (the atmosphere). A circular orbit has apoapsis ≈ periapsis.',
+  'VELOCITY (m/s)':
+    'Speed of the rocket relative to Earth\'s center. To reach Low Earth Orbit (LEO) at ~200 km, the rocket needs ~7,800 m/s of orbital velocity. Velocity increases during engine burns and decreases due to gravity and atmospheric drag.',
+  'ECCENTRICITY':
+    'Measures how circular the orbit is. 0 = perfect circle, values between 0 and 1 = ellipse, 1 = parabolic escape. A good LEO insertion targets eccentricity < 0.02. The simulation declares orbit achieved when e < 0.02 and periapsis > 180 km.',
+  'INCLINATION (deg)':
+    'The tilt of the orbit relative to the equator. 0° = equatorial orbit, 90° = polar orbit. The inclination is determined by the launch direction. Titan\'s default launch is nearly polar (90°).',
+  'SEMI-MAJOR AXIS (km)':
+    'Half the longest diameter of the orbital ellipse. For a circular orbit at 200 km altitude, the semi-major axis is Earth\'s radius (6,371 km) + 200 km = 6,571 km. Negative values mean the rocket is on a suborbital trajectory.',
+  'DOWNRANGE DISTANCE (km)':
+    'The horizontal distance from the launch site. As the rocket pitches over during the gravity turn, it covers increasing horizontal distance. This is the X-coordinate in the simulation frame.',
+};
+
+function HelpTooltip({ text }: { text: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex', marginLeft: '6px' }}>
+      <button
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        onClick={() => setShow(s => !s)}
+        style={{
+          width: '16px', height: '16px', borderRadius: '50%',
+          background: 'rgba(68,136,255,0.12)', border: '1px solid rgba(68,136,255,0.3)',
+          color: '#4488ff', fontSize: '10px', fontWeight: 700,
+          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 0, lineHeight: 1,
+        }}
+      >
+        ?
+      </button>
+      {show && (
+        <div style={{
+          position: 'absolute', top: '22px', left: '-8px', zIndex: 100,
+          width: '280px', padding: '10px 12px',
+          background: '#12122a', border: '1px solid #2a2a4e',
+          borderRadius: '8px', fontSize: '11px', color: '#aab',
+          lineHeight: 1.5, boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+        }}>
+          {text}
+        </div>
+      )}
+    </span>
+  );
+}
+
+function CollapsibleChart({ title, defaultOpen = true, accent, helpKey, children }: {
   title: string;
   defaultOpen?: boolean;
   accent?: string;
+  helpKey?: string;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const helpText = helpKey ? CHART_HELP[helpKey] : undefined;
   return (
     <div style={chartBoxStyle}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: accent || '#667',
-        }}
-      >
-        <span style={{ fontSize: '10px', letterSpacing: '1.5px', fontWeight: 700 }}>{title}</span>
-        <span style={{ fontSize: '10px', color: '#445', transition: 'transform 0.2s', transform: open ? 'rotate(0)' : 'rotate(-90deg)' }}>
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        <button
+          onClick={() => setOpen(o => !o)}
+          style={{
+            display: 'flex', alignItems: 'center', flex: 1,
+            background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: accent || '#667',
+          }}
+        >
+          <span style={{ fontSize: '10px', letterSpacing: '1.5px', fontWeight: 700 }}>{title}</span>
+        </button>
+        {helpText && <HelpTooltip text={helpText} />}
+        <button
+          onClick={() => setOpen(o => !o)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#445', fontSize: '10px', marginLeft: '8px', padding: 0 }}
+        >
           {open ? '▼' : '▶'}
-        </span>
-      </button>
+        </button>
+      </div>
       {open && <div style={{ marginTop: '10px' }}>{children}</div>}
     </div>
   );
 }
 
-export default function TelemetryDashboard({ telemetry, events, isLive, compact }: TelemetryDashboardProps) {
+export default function TelemetryDashboard({ telemetry, events, isLive, compact, comparisons }: TelemetryDashboardProps) {
   const chartData = telemetry.map(t => ({
     time: Math.round(t.time),
     altitude: t.altitude / 1000,
@@ -51,6 +108,51 @@ export default function TelemetryDashboard({ telemetry, events, isLive, compact 
     downrange: t.x / 1000,
     stageIndex: t.stageIndex,
   }));
+
+  // Merge comparison data into chart data by time
+  const compDataSets = (comparisons || []).map(c => {
+    const map = new Map<number, any>();
+    c.telemetry.forEach(t => {
+      map.set(Math.round(t.time), {
+        altitude: t.altitude / 1000,
+        velocity: t.velocity,
+        apoapsis: t.apoapsis / 1000,
+        periapsis: Math.max(t.periapsis / 1000, -500),
+        eccentricity: t.eccentricity,
+        inclination: t.inclination * 180 / Math.PI,
+        semiMajorAxis: t.semiMajorAxis / 1000,
+        downrange: t.x / 1000,
+      });
+    });
+    return { name: c.name, color: c.color, map };
+  });
+
+  // Merge all time keys
+  const mergedData = (() => {
+    if (compDataSets.length === 0) return chartData;
+    const allTimes = new Set<number>();
+    chartData.forEach(d => allTimes.add(d.time));
+    compDataSets.forEach(c => c.map.forEach((_, t) => allTimes.add(t)));
+    const sorted = [...allTimes].sort((a, b) => a - b);
+    return sorted.map(time => {
+      const base = chartData.find(d => d.time === time) || {};
+      const row: any = { time, ...base };
+      compDataSets.forEach((c, i) => {
+        const cd = c.map.get(time);
+        if (cd) {
+          row[`alt_c${i}`] = cd.altitude;
+          row[`vel_c${i}`] = cd.velocity;
+          row[`apo_c${i}`] = cd.apoapsis;
+          row[`peri_c${i}`] = cd.periapsis;
+          row[`ecc_c${i}`] = cd.eccentricity;
+          row[`inc_c${i}`] = cd.inclination;
+          row[`sma_c${i}`] = cd.semiMajorAxis;
+          row[`dr_c${i}`] = cd.downrange;
+        }
+      });
+      return row;
+    });
+  })();
 
   const latest = telemetry[telemetry.length - 1];
   const stageTimes = (events || []).map(e => Math.round(e.time));
@@ -67,6 +169,12 @@ export default function TelemetryDashboard({ telemetry, events, isLive, compact 
   const maxAlt = Math.max(...telemetry.map(t => t.altitude)) / 1000;
   const maxVel = Math.max(...telemetry.map(t => t.velocity));
 
+  // Helper to render comparison lines for a given dataKey prefix
+  const compLines = (prefix: string) =>
+    compDataSets.map((c, i) => (
+      <Line key={`comp-${i}`} type="monotone" dataKey={`${prefix}_c${i}`} stroke={c.color} dot={false} strokeWidth={1.5} strokeDasharray="4 3" name={c.name} />
+    ));
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       {/* Events timeline */}
@@ -75,11 +183,8 @@ export default function TelemetryDashboard({ telemetry, events, isLive, compact 
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             {events.map((e, i) => (
               <div key={i} style={{
-                padding: '6px 12px',
-                background: '#0c0c18',
-                borderRadius: '6px',
-                border: '1px solid #1a1a2e',
-                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '6px 12px', background: '#0c0c18', borderRadius: '6px',
+                border: '1px solid #1a1a2e', display: 'flex', alignItems: 'center', gap: '8px',
               }}>
                 <span style={{ color: '#ffaa00', fontFamily: 'monospace', fontSize: '11px', fontWeight: 600 }}>
                   T+{fmtTime(e.time)}
@@ -111,10 +216,10 @@ export default function TelemetryDashboard({ telemetry, events, isLive, compact 
       </div>
 
       {/* Altitude & Orbit chart */}
-      {chartData.length > 1 && (
-        <CollapsibleChart title="ALTITUDE & ORBIT (km)" accent="#4488ff">
+      {mergedData.length > 1 && (
+        <CollapsibleChart title="ALTITUDE & ORBIT (km)" accent="#4488ff" helpKey="ALTITUDE & ORBIT (km)">
           <ResponsiveContainer width="100%" height={chartHeight}>
-            <LineChart data={chartData} margin={{ top: 5, right: 10, bottom: 0, left: -5 }}>
+            <LineChart data={mergedData} margin={{ top: 5, right: 10, bottom: 0, left: -5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#111118" />
               <XAxis dataKey="time" stroke="#333" fontSize={10} tickFormatter={t => `${t}s`} />
               <YAxis stroke="#333" fontSize={10} />
@@ -126,16 +231,17 @@ export default function TelemetryDashboard({ telemetry, events, isLive, compact 
               <Line type="monotone" dataKey="altitude" stroke="#4488ff" dot={false} strokeWidth={2} name="Altitude" />
               <Line type="monotone" dataKey="apoapsis" stroke="#44cc66" dot={false} strokeWidth={1.5} name="Apoapsis" />
               <Line type="monotone" dataKey="periapsis" stroke="#ff8844" dot={false} strokeWidth={1.5} name="Periapsis" />
+              {compLines('alt')}
             </LineChart>
           </ResponsiveContainer>
         </CollapsibleChart>
       )}
 
       {/* Velocity chart */}
-      {chartData.length > 1 && (
-        <CollapsibleChart title="VELOCITY (m/s)" accent="#ff4488">
+      {mergedData.length > 1 && (
+        <CollapsibleChart title="VELOCITY (m/s)" accent="#ff4488" helpKey="VELOCITY (m/s)">
           <ResponsiveContainer width="100%" height={chartHeight}>
-            <LineChart data={chartData} margin={{ top: 5, right: 10, bottom: 0, left: -5 }}>
+            <LineChart data={mergedData} margin={{ top: 5, right: 10, bottom: 0, left: -5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#111118" />
               <XAxis dataKey="time" stroke="#333" fontSize={10} tickFormatter={t => `${t}s`} />
               <YAxis stroke="#333" fontSize={10} />
@@ -143,17 +249,19 @@ export default function TelemetryDashboard({ telemetry, events, isLive, compact 
                 <ReferenceLine key={i} x={t} stroke="#ffaa00" strokeDasharray="2 3" strokeWidth={0.5} />
               ))}
               <Tooltip contentStyle={tooltipStyle} labelFormatter={v => `T+${v}s`} />
+              <Legend wrapperStyle={{ fontSize: '10px' }} />
               <Line type="monotone" dataKey="velocity" stroke="#ff4488" dot={false} strokeWidth={2} name="Velocity" />
+              {compLines('vel')}
             </LineChart>
           </ResponsiveContainer>
         </CollapsibleChart>
       )}
 
       {/* Eccentricity chart */}
-      {chartData.length > 1 && (
-        <CollapsibleChart title="ECCENTRICITY" defaultOpen={!compact} accent="#aa44ff">
+      {mergedData.length > 1 && (
+        <CollapsibleChart title="ECCENTRICITY" defaultOpen={!compact} accent="#aa44ff" helpKey="ECCENTRICITY">
           <ResponsiveContainer width="100%" height={compact ? 120 : 160}>
-            <LineChart data={chartData} margin={{ top: 5, right: 10, bottom: 0, left: -5 }}>
+            <LineChart data={mergedData} margin={{ top: 5, right: 10, bottom: 0, left: -5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#111118" />
               <XAxis dataKey="time" stroke="#333" fontSize={10} tickFormatter={t => `${t}s`} />
               <YAxis stroke="#333" fontSize={10} domain={[0, 'auto']} />
@@ -161,52 +269,60 @@ export default function TelemetryDashboard({ telemetry, events, isLive, compact 
                 <ReferenceLine key={i} x={t} stroke="#ffaa00" strokeDasharray="2 3" strokeWidth={0.5} />
               ))}
               <Tooltip contentStyle={tooltipStyle} labelFormatter={v => `T+${v}s`} />
+              <Legend wrapperStyle={{ fontSize: '10px' }} />
               <Line type="monotone" dataKey="eccentricity" stroke="#aa44ff" dot={false} strokeWidth={2} name="Eccentricity" />
+              {compLines('ecc')}
             </LineChart>
           </ResponsiveContainer>
         </CollapsibleChart>
       )}
 
       {/* Inclination chart */}
-      {chartData.length > 1 && (
-        <CollapsibleChart title="INCLINATION (deg)" defaultOpen={false} accent="#ff88aa">
+      {mergedData.length > 1 && (
+        <CollapsibleChart title="INCLINATION (deg)" defaultOpen={false} accent="#ff88aa" helpKey="INCLINATION (deg)">
           <ResponsiveContainer width="100%" height={compact ? 120 : 160}>
-            <LineChart data={chartData} margin={{ top: 5, right: 10, bottom: 0, left: -5 }}>
+            <LineChart data={mergedData} margin={{ top: 5, right: 10, bottom: 0, left: -5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#111118" />
               <XAxis dataKey="time" stroke="#333" fontSize={10} tickFormatter={t => `${t}s`} />
               <YAxis stroke="#333" fontSize={10} unit="°" />
               <Tooltip contentStyle={tooltipStyle} labelFormatter={v => `T+${v}s`} formatter={(v: number) => [`${v.toFixed(2)}°`, 'Inclination']} />
+              <Legend wrapperStyle={{ fontSize: '10px' }} />
               <Line type="monotone" dataKey="inclination" stroke="#ff88aa" dot={false} strokeWidth={2} name="Inclination" />
+              {compLines('inc')}
             </LineChart>
           </ResponsiveContainer>
         </CollapsibleChart>
       )}
 
       {/* Semi-major axis chart */}
-      {chartData.length > 1 && (
-        <CollapsibleChart title="SEMI-MAJOR AXIS (km)" defaultOpen={false} accent="#44aaff">
+      {mergedData.length > 1 && (
+        <CollapsibleChart title="SEMI-MAJOR AXIS (km)" defaultOpen={false} accent="#44aaff" helpKey="SEMI-MAJOR AXIS (km)">
           <ResponsiveContainer width="100%" height={compact ? 120 : 160}>
-            <LineChart data={chartData} margin={{ top: 5, right: 10, bottom: 0, left: -5 }}>
+            <LineChart data={mergedData} margin={{ top: 5, right: 10, bottom: 0, left: -5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#111118" />
               <XAxis dataKey="time" stroke="#333" fontSize={10} tickFormatter={t => `${t}s`} />
               <YAxis stroke="#333" fontSize={10} />
               <Tooltip contentStyle={tooltipStyle} labelFormatter={v => `T+${v}s`} />
+              <Legend wrapperStyle={{ fontSize: '10px' }} />
               <Line type="monotone" dataKey="semiMajorAxis" stroke="#44aaff" dot={false} strokeWidth={2} name="Semi-Major Axis" />
+              {compLines('sma')}
             </LineChart>
           </ResponsiveContainer>
         </CollapsibleChart>
       )}
 
       {/* Downrange distance chart */}
-      {chartData.length > 1 && (
-        <CollapsibleChart title="DOWNRANGE DISTANCE (km)" defaultOpen={false} accent="#44cc88">
+      {mergedData.length > 1 && (
+        <CollapsibleChart title="DOWNRANGE DISTANCE (km)" defaultOpen={false} accent="#44cc88" helpKey="DOWNRANGE DISTANCE (km)">
           <ResponsiveContainer width="100%" height={compact ? 120 : 160}>
-            <LineChart data={chartData} margin={{ top: 5, right: 10, bottom: 0, left: -5 }}>
+            <LineChart data={mergedData} margin={{ top: 5, right: 10, bottom: 0, left: -5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#111118" />
               <XAxis dataKey="time" stroke="#333" fontSize={10} tickFormatter={t => `${t}s`} />
               <YAxis stroke="#333" fontSize={10} />
               <Tooltip contentStyle={tooltipStyle} labelFormatter={v => `T+${v}s`} />
+              <Legend wrapperStyle={{ fontSize: '10px' }} />
               <Line type="monotone" dataKey="downrange" stroke="#44cc88" dot={false} strokeWidth={2} name="Downrange" />
+              {compLines('dr')}
             </LineChart>
           </ResponsiveContainer>
         </CollapsibleChart>
