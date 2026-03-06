@@ -32,6 +32,16 @@ extern "C"
         double rk45_rtol;
         double rk45_hmin;
         double rk45_hmax;
+
+        // Completion criteria (configurable per mission)
+        double completionMinPeriapsis;    // meters, default 180000
+        double completionMaxEccentricity; // default 0.02
+
+        // Physics options
+        int useJ2;                   // 0 = point mass, 1 = J2 perturbation
+        int useUSStandardAtmosphere; // 0 = exponential, 1 = US Standard 1976
+        int useEarthRotation;        // 0 = no rotation, 1 = include rotation
+        int useMachCd;               // 0 = constant Cd, 1 = Mach-dependent Cd
     } TitanSimConfig;
 
     typedef struct
@@ -42,6 +52,10 @@ extern "C"
         double exhaustVelocity;
         double referenceArea;
         double dragCoefficient;
+
+        // Altitude-dependent Isp (optional, set to 0 to disable)
+        double ispSeaLevel;  // seconds
+        double ispVacuum;    // seconds
     } TitanStageConfig;
 
     typedef struct
@@ -60,15 +74,42 @@ extern "C"
         double semiMajorAxis;
         int stageIndex;
         int isComplete;
+        int status; // 0 = running, 1 = completed, 2 = impact, 3 = error
     } TitanTelemetry;
 
+    // Event types matching titan::events::EventType
+    typedef struct
+    {
+        double time;
+        int type;
+        char description[256];
+    } TitanEvent;
+
     typedef struct TitanSim TitanSim;
+
+    // Event callback
+    typedef void (*TitanEventCallback)(TitanEvent event, void *userData);
+
+    // Telemetry callback
+    typedef void (*TitanTelemetryCallback)(const char *channel, double time,
+                                           double value, void *userData);
 
     TITAN_API TitanSim *titan_create_simulation(TitanSimConfig config);
     TITAN_API void titan_add_stage(TitanSim *sim, TitanStageConfig stage);
     TITAN_API TitanTelemetry titan_step(TitanSim *sim);
     TITAN_API TitanTelemetry titan_get_telemetry(TitanSim *sim);
     TITAN_API void titan_destroy(TitanSim *sim);
+
+    // New: event and telemetry callbacks
+    TITAN_API void titan_set_event_callback(TitanSim *sim,
+                                            TitanEventCallback cb,
+                                            void *userData);
+    TITAN_API void titan_set_telemetry_callback(TitanSim *sim,
+                                                TitanTelemetryCallback cb,
+                                                void *userData);
+
+    // New: error handling
+    TITAN_API int titan_get_last_error(TitanSim *sim, char *buffer, int bufferSize);
 
 #ifdef __cplusplus
 }

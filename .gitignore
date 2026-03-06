@@ -46,3 +46,5 @@
 /backend/include/CMakeFiles/
 
 .vscode/
+
+*.node_modules

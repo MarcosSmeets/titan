@@ -24,8 +24,9 @@ namespace titan::simulation
         titan::math::Vector2 GetPosition() const;
         titan::math::Vector2 GetVelocity() const;
 
-        // Set maximum allowed g-load
         void SetMaxG(double maxG);
+        bool HasImpacted() const;
+        int GetStageIndex() const;
 
     private:
         double GetTotalMass() const;
@@ -35,7 +36,9 @@ namespace titan::simulation
 
         double m_earthRadius;
         double m_mu;
-        double m_maxG = 4.0; // Default 4g limit
+        double m_maxG = 4.0;
+        bool m_impacted;
+        int m_stageIndex;
 
         std::vector<Stage> m_stages;
 

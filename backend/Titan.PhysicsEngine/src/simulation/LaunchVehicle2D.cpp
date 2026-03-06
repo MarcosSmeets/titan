@@ -1,6 +1,5 @@
 #include "simulation/LaunchVehicle2D.h"
 #include <cmath>
-#include <iostream>
 
 namespace titan::simulation
 {
@@ -15,7 +14,9 @@ namespace titan::simulation
         : m_earthRadius(earthRadius),
           m_mu(mu),
           m_integrator(std::move(integrator)),
-          m_guidance(std::move(guidance))
+          m_guidance(std::move(guidance)),
+          m_impacted(false),
+          m_stageIndex(0)
     {
         m_state.x = earthRadius + 1.0;
         m_state.y = 0.0;
@@ -44,6 +45,9 @@ namespace titan::simulation
 
     void LaunchVehicle2D::Update(double dt)
     {
+        if (m_impacted)
+            return;
+
         double totalMass = GetTotalMass();
         if (totalMass <= 0.0)
             return;
@@ -53,8 +57,8 @@ namespace titan::simulation
 
         if (r <= m_earthRadius - 1.0)
         {
-            std::cout << "Rocket impacted Earth.\n";
-            std::exit(0);
+            m_impacted = true;
+            return;
         }
 
         double altitude = r - m_earthRadius;
@@ -70,8 +74,6 @@ namespace titan::simulation
         if (!m_stages.empty() && m_stages.front().HasFuel())
         {
             Stage &stage = m_stages.front();
-
-            // --- Closed-loop acceleration limiting ---
 
             double thrust = stage.GetThrust();
             double accel = thrust / totalMass;
@@ -100,8 +102,6 @@ namespace titan::simulation
             thrustY = thrust * std::sin(pitch);
         }
 
-        // -------- RK4 Integration --------
-
         auto derivativeFunc =
             [&](const titan::integrators::State &state)
             -> titan::integrators::Derivative
@@ -119,7 +119,6 @@ namespace titan::simulation
             double ax_gravity = factor * state.x;
             double ay_gravity = factor * state.y;
 
-            // --- Drag ---
             double vx = state.vx;
             double vy = state.vy;
             double speed = std::sqrt(vx * vx + vy * vy);
@@ -168,8 +167,8 @@ namespace titan::simulation
     {
         if (!m_stages.empty() && m_stages.front().IsDepleted())
         {
-            std::cout << "Stage separation.\n";
             m_stages.erase(m_stages.begin());
+            m_stageIndex++;
         }
     }
 
@@ -181,5 +180,15 @@ namespace titan::simulation
     titan::math::Vector2 LaunchVehicle2D::GetVelocity() const
     {
         return {m_state.vx, m_state.vy};
+    }
+
+    bool LaunchVehicle2D::HasImpacted() const
+    {
+        return m_impacted;
+    }
+
+    int LaunchVehicle2D::GetStageIndex() const
+    {
+        return m_stageIndex;
     }
 }

@@ -1,6 +1,5 @@
 #include "simulation/LaunchVehicle3D.h"
 #include <cmath>
-#include <iostream>
 
 namespace titan::simulation
 {
@@ -14,7 +13,9 @@ namespace titan::simulation
         : m_earthRadius(earthRadius),
           m_mu(mu),
           m_integrator(std::move(integrator)),
-          m_guidance(std::move(guidance))
+          m_guidance(std::move(guidance)),
+          m_impacted(false),
+          m_stageIndex(0)
     {
         m_state = {
             earthRadius + 1.0, 0.0, 0.0,
@@ -41,6 +42,9 @@ namespace titan::simulation
 
     void LaunchVehicle3D::Update(double dt)
     {
+        if (m_impacted)
+            return;
+
         double totalMass = GetTotalMass();
         if (totalMass <= 0.0)
             return;
@@ -53,8 +57,8 @@ namespace titan::simulation
 
         if (r <= m_earthRadius - 1.0)
         {
-            std::cout << "Rocket impacted Earth.\n";
-            std::exit(0);
+            m_impacted = true;
+            return;
         }
 
         double altitude = r - m_earthRadius;
@@ -156,8 +160,8 @@ namespace titan::simulation
     {
         if (!m_stages.empty() && m_stages.front().IsDepleted())
         {
-            std::cout << "Stage separation.\n";
             m_stages.erase(m_stages.begin());
+            m_stageIndex++;
         }
     }
 
@@ -169,5 +173,15 @@ namespace titan::simulation
     titan::math::Vector3 LaunchVehicle3D::GetVelocity() const
     {
         return {m_state.vx, m_state.vy, m_state.vz};
+    }
+
+    bool LaunchVehicle3D::HasImpacted() const
+    {
+        return m_impacted;
+    }
+
+    int LaunchVehicle3D::GetStageIndex() const
+    {
+        return m_stageIndex;
     }
 }

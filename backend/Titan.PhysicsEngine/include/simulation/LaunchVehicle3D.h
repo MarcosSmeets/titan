@@ -25,6 +25,8 @@ namespace titan::simulation
         titan::math::Vector3 GetVelocity() const;
 
         void SetMaxG(double maxG);
+        bool HasImpacted() const;
+        int GetStageIndex() const;
 
     private:
         double GetTotalMass() const;
@@ -35,6 +37,8 @@ namespace titan::simulation
         double m_earthRadius;
         double m_mu;
         double m_maxG = 4.0;
+        bool m_impacted;
+        int m_stageIndex;
 
         std::vector<Stage> m_stages;
 
