@@ -3,9 +3,81 @@ interface NavBallProps {
   pitch: number;
   yaw: number;
   size?: number;
+  // Velocity and position for computing orbital markers
+  vx?: number; vy?: number; vz?: number;
+  px?: number; py?: number; pz?: number;
 }
 
-export default function NavBall({ roll, pitch, yaw, size = 180 }: NavBallProps) {
+interface OrbitalMarker {
+  label: string;
+  symbol: 'prograde' | 'retrograde' | 'normal' | 'antiNormal' | 'radialIn' | 'radialOut';
+  color: string;
+  direction: [number, number, number];
+}
+
+function normalize(x: number, y: number, z: number): [number, number, number] {
+  const mag = Math.sqrt(x * x + y * y + z * z);
+  if (mag < 1e-12) return [0, 0, 0];
+  return [x / mag, y / mag, z / mag];
+}
+
+function cross(a: [number, number, number], b: [number, number, number]): [number, number, number] {
+  return [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ];
+}
+
+// Rotate vector by inverse of quaternion (q*, i.e. inertial -> body frame)
+function rotateByQuatInverse(
+  qw: number, qx: number, qy: number, qz: number,
+  vx: number, vy: number, vz: number,
+): [number, number, number] {
+  // Conjugate quaternion for inverse rotation
+  const cw = qw, cx = -qx, cy = -qy, cz = -qz;
+  // q* v q — quaternion sandwich product
+  // First: t = q* × v (as pure quaternion)
+  const tw = -cx * vx - cy * vy - cz * vz;
+  const tx = cw * vx + cy * vz - cz * vy;
+  const ty = cw * vy + cz * vx - cx * vz;
+  const tz = cw * vz + cx * vy - cy * vx;
+  // Then: result = t × q (original quaternion, not conjugate)
+  return [
+    tw * (-qx) + tx * qw + ty * (-qz) - tz * (-qy),
+    tw * (-qy) + ty * qw + tz * (-qx) - tx * (-qz),
+    tw * (-qz) + tz * qw + tx * (-qy) - ty * (-qx),
+  ];
+}
+
+function computeOrbitalMarkers(
+  pvx: number, pvy: number, pvz: number,
+  ppx: number, ppy: number, ppz: number,
+): OrbitalMarker[] {
+  const velMag = Math.sqrt(pvx * pvx + pvy * pvy + pvz * pvz);
+  const posMag = Math.sqrt(ppx * ppx + ppy * ppy + ppz * ppz);
+  if (velMag < 1e-6 || posMag < 1e-6) return [];
+
+  const prograde = normalize(pvx, pvy, pvz);
+  const retrograde: [number, number, number] = [-prograde[0], -prograde[1], -prograde[2]];
+  const radialIn = normalize(-ppx, -ppy, -ppz);
+  const radialOut: [number, number, number] = [-radialIn[0], -radialIn[1], -radialIn[2]];
+  const pos: [number, number, number] = [ppx, ppy, ppz];
+  const vel: [number, number, number] = [pvx, pvy, pvz];
+  const normal = normalize(...cross(pos, vel));
+  const antiNormal: [number, number, number] = [-normal[0], -normal[1], -normal[2]];
+
+  return [
+    { label: 'PRO', symbol: 'prograde', color: '#44ff44', direction: prograde },
+    { label: 'RET', symbol: 'retrograde', color: '#44ff44', direction: retrograde },
+    { label: 'NML', symbol: 'normal', color: '#cc44ff', direction: normal },
+    { label: 'ANM', symbol: 'antiNormal', color: '#cc44ff', direction: antiNormal },
+    { label: 'RAD+', symbol: 'radialOut', color: '#44ccff', direction: radialOut },
+    { label: 'RAD-', symbol: 'radialIn', color: '#44ccff', direction: radialIn },
+  ];
+}
+
+export default function NavBall({ roll, pitch, yaw, size = 180, vx, vy, vz, px, py, pz }: NavBallProps) {
   const cx = size / 2;
   const cy = size / 2;
   const r = size / 2 - 8;
@@ -14,6 +86,48 @@ export default function NavBall({ roll, pitch, yaw, size = 180 }: NavBallProps) 
 
   // Normalize yaw to 0-360
   const yawNorm = ((yaw % 360) + 360) % 360;
+
+  // Compute attitude quaternion from Euler angles (ZYX convention)
+  const rollRad = (roll * Math.PI) / 180;
+  const pitchRad = (pitch * Math.PI) / 180;
+  const yawRad = (yaw * Math.PI) / 180;
+  const cr = Math.cos(rollRad / 2), sr = Math.sin(rollRad / 2);
+  const cp = Math.cos(pitchRad / 2), sp = Math.sin(pitchRad / 2);
+  const cyq = Math.cos(yawRad / 2), sy = Math.sin(yawRad / 2);
+  const qw = cr * cp * cyq + sr * sp * sy;
+  const qx = sr * cp * cyq - cr * sp * sy;
+  const qy = cr * sp * cyq + sr * cp * sy;
+  const qz = cr * cp * sy - sr * sp * cyq;
+
+  // Compute orbital markers if velocity/position are provided
+  const hasOrbitalData = vx !== undefined && vy !== undefined && vz !== undefined &&
+    px !== undefined && py !== undefined && pz !== undefined;
+
+  const markers = hasOrbitalData
+    ? computeOrbitalMarkers(vx!, vy!, vz!, px!, py!, pz!)
+    : [];
+
+  // Project markers onto navball
+  const projectedMarkers = markers.map(marker => {
+    // Transform direction from inertial to body frame
+    const bodyDir = rotateByQuatInverse(qw, qx, qy, qz, marker.direction[0], marker.direction[1], marker.direction[2]);
+
+    // bodyDir[0] = forward (into screen), bodyDir[1] = right, bodyDir[2] = up
+    // Visible if forward component > 0 (facing us)
+    const forward = bodyDir[0];
+    if (forward <= 0) return null;
+
+    // Project onto 2D: right -> x, up -> y (inverted for SVG)
+    const projX = cx + (bodyDir[1] / (forward + 1)) * r * 0.9;
+    const projY = cy - (bodyDir[2] / (forward + 1)) * r * 0.9;
+
+    // Check if within ball bounds
+    const dx = projX - cx;
+    const dy = projY - cy;
+    if (Math.sqrt(dx * dx + dy * dy) > r * 0.95) return null;
+
+    return { ...marker, x: projX, y: projY };
+  }).filter(Boolean) as (OrbitalMarker & { x: number; y: number })[];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
@@ -108,6 +222,47 @@ export default function NavBall({ roll, pitch, yaw, size = 180 }: NavBallProps) 
           const by2 = cy + Math.sin(a + 0.08) * baseR;
           return <polygon points={`${tipX},${tipY} ${bx1},${by1} ${bx2},${by2}`} fill="#ffaa00" />;
         })()}
+
+        {/* Orbital navigation markers */}
+        {projectedMarkers.map(m => (
+          <g key={m.label}>
+            <circle cx={m.x} cy={m.y} r={6} fill="none" stroke={m.color} strokeWidth="1.5" opacity={0.9} />
+            {m.symbol === 'prograde' && (
+              <circle cx={m.x} cy={m.y} r={1.5} fill={m.color} opacity={0.9} />
+            )}
+            {m.symbol === 'retrograde' && (
+              <>
+                <line x1={m.x - 3} y1={m.y - 3} x2={m.x + 3} y2={m.y + 3} stroke={m.color} strokeWidth="1.5" opacity={0.9} />
+                <line x1={m.x + 3} y1={m.y - 3} x2={m.x - 3} y2={m.y + 3} stroke={m.color} strokeWidth="1.5" opacity={0.9} />
+              </>
+            )}
+            {m.symbol === 'normal' && (
+              <polygon points={`${m.x},${m.y - 4} ${m.x - 3.5},${m.y + 2.5} ${m.x + 3.5},${m.y + 2.5}`} fill="none" stroke={m.color} strokeWidth="1.3" opacity={0.9} />
+            )}
+            {m.symbol === 'antiNormal' && (
+              <polygon points={`${m.x},${m.y + 4} ${m.x - 3.5},${m.y - 2.5} ${m.x + 3.5},${m.y - 2.5}`} fill="none" stroke={m.color} strokeWidth="1.3" opacity={0.9} />
+            )}
+            {m.symbol === 'radialOut' && (
+              <>
+                <circle cx={m.x} cy={m.y} r={1.5} fill={m.color} opacity={0.9} />
+                <line x1={m.x} y1={m.y - 6} x2={m.x} y2={m.y - 3} stroke={m.color} strokeWidth="1.3" opacity={0.9} />
+              </>
+            )}
+            {m.symbol === 'radialIn' && (
+              <>
+                <circle cx={m.x} cy={m.y} r={1.5} fill={m.color} opacity={0.9} />
+                <line x1={m.x} y1={m.y + 3} x2={m.x} y2={m.y + 6} stroke={m.color} strokeWidth="1.3" opacity={0.9} />
+              </>
+            )}
+            <text
+              x={m.x} y={m.y + 14}
+              fill={m.color} fontSize="7" fontFamily="monospace" fontWeight="bold"
+              textAnchor="middle" opacity={0.8}
+            >
+              {m.label}
+            </text>
+          </g>
+        ))}
 
         {/* Fixed crosshair reticle */}
         <line x1={cx - 22} y1={cy} x2={cx - 8} y2={cy} stroke="#ffaa00" strokeWidth="2" />
