@@ -127,7 +127,7 @@ export default function TrajectoryViewer({
     const py = t.y / 1000;
     const vx = (t.vx ?? 0) / 1000;
     const vy = (t.vy ?? 0) / 1000;
-    return computeOrbitPath(px, py, vx, vy, 300);
+    return computeOrbitPath(px, py, vx, vy, 400);
   }, [telemetry]);
 
   // Velocity vector at current position
@@ -301,7 +301,7 @@ export default function TrajectoryViewer({
   return (
     <div
       ref={containerRef}
-      style={{ width: '100%', height: '100%', position: 'relative', background: '#020208' }}
+      style={{ width: '100%', height: '100%', position: 'relative', background: '#08080e' }}
     >
       <svg
         ref={svgRef}
