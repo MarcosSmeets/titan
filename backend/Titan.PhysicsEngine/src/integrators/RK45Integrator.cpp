@@ -28,24 +28,6 @@ namespace titan::integrators
             base.vz + h * w * k.dvz};
     }
 
-    // Helper: combine multiple weighted derivatives
-    static State AddWeighted6(const State &base, double h,
-                              const Derivative &k1, double w1,
-                              const Derivative &k2, double w2,
-                              const Derivative &k3, double w3,
-                              const Derivative &k4, double w4,
-                              const Derivative &k5, double w5,
-                              const Derivative &k6, double w6)
-    {
-        return {
-            base.x + h * (w1 * k1.dx + w2 * k2.dx + w3 * k3.dx + w4 * k4.dx + w5 * k5.dx + w6 * k6.dx),
-            base.y + h * (w1 * k1.dy + w2 * k2.dy + w3 * k3.dy + w4 * k4.dy + w5 * k5.dy + w6 * k6.dy),
-            base.z + h * (w1 * k1.dz + w2 * k2.dz + w3 * k3.dz + w4 * k4.dz + w5 * k5.dz + w6 * k6.dz),
-            base.vx + h * (w1 * k1.dvx + w2 * k2.dvx + w3 * k3.dvx + w4 * k4.dvx + w5 * k5.dvx + w6 * k6.dvx),
-            base.vy + h * (w1 * k1.dvy + w2 * k2.dvy + w3 * k3.dvy + w4 * k4.dvy + w5 * k5.dvy + w6 * k6.dvy),
-            base.vz + h * (w1 * k1.dvz + w2 * k2.dvz + w3 * k3.dvz + w4 * k4.dvz + w5 * k5.dvz + w6 * k6.dvz)};
-    }
-
     StepResult RK45Integrator::Step(
         const State &current,
         double dt,
@@ -62,14 +44,11 @@ namespace titan::integrators
         {
             h = std::min(h, t_remaining);
 
-            // Stage 1
             Derivative k1 = derivativeFunc(state);
 
-            // Stage 2
             State s2 = AddWeighted(state, h, k1, b21);
             Derivative k2 = derivativeFunc(s2);
 
-            // Stage 3
             State s3{
                 state.x + h * (b31 * k1.dx + b32 * k2.dx),
                 state.y + h * (b31 * k1.dy + b32 * k2.dy),
@@ -79,7 +58,6 @@ namespace titan::integrators
                 state.vz + h * (b31 * k1.dvz + b32 * k2.dvz)};
             Derivative k3 = derivativeFunc(s3);
 
-            // Stage 4
             State s4{
                 state.x + h * (b41 * k1.dx + b42 * k2.dx + b43 * k3.dx),
                 state.y + h * (b41 * k1.dy + b42 * k2.dy + b43 * k3.dy),
@@ -89,7 +67,6 @@ namespace titan::integrators
                 state.vz + h * (b41 * k1.dvz + b42 * k2.dvz + b43 * k3.dvz)};
             Derivative k4 = derivativeFunc(s4);
 
-            // Stage 5
             State s5{
                 state.x + h * (b51 * k1.dx + b52 * k2.dx + b53 * k3.dx + b54 * k4.dx),
                 state.y + h * (b51 * k1.dy + b52 * k2.dy + b53 * k3.dy + b54 * k4.dy),
@@ -99,13 +76,7 @@ namespace titan::integrators
                 state.vz + h * (b51 * k1.dvz + b52 * k2.dvz + b53 * k3.dvz + b54 * k4.dvz)};
             Derivative k5 = derivativeFunc(s5);
 
-            // Stage 6
-            State s6 = AddWeighted6(state, h,
-                                    k1, b61, k2, b62, k3, b63,
-                                    k4, b64, k5, b65,
-                                    k1, 0.0); // placeholder, computed manually
-            // Recompute s6 properly
-            s6 = {
+            State s6{
                 state.x + h * (b61 * k1.dx + b62 * k2.dx + b63 * k3.dx + b64 * k4.dx + b65 * k5.dx),
                 state.y + h * (b61 * k1.dy + b62 * k2.dy + b63 * k3.dy + b64 * k4.dy + b65 * k5.dy),
                 state.z + h * (b61 * k1.dz + b62 * k2.dz + b63 * k3.dz + b64 * k4.dz + b65 * k5.dz),
@@ -135,7 +106,6 @@ namespace titan::integrators
                 state.vy + h * (d1 * k1.dvy + d3 * k3.dvy + d4 * k4.dvy + d5 * k5.dvy + d6 * k6.dvy + d7 * k7.dvy),
                 state.vz + h * (d1 * k1.dvz + d3 * k3.dvz + d4 * k4.dvz + d5 * k5.dvz + d6 * k6.dvz + d7 * k7.dvz)};
 
-            // Error estimate: max of component-wise |y5 - y4| / (atol + rtol * |y5|)
             double err = 0.0;
             auto scaleErr = [&](double val5, double val4)
             {
@@ -154,11 +124,9 @@ namespace titan::integrators
 
             if (err <= 1.0)
             {
-                // Accept step
                 state = y5;
                 t_remaining -= h;
 
-                // Compute new step size
                 double factor = (err > 1e-15)
                                     ? 0.84 * std::pow(1.0 / err, 0.25)
                                     : 4.0;
@@ -168,7 +136,98 @@ namespace titan::integrators
             }
             else
             {
-                // Reject step, reduce h
+                double factor = 0.84 * std::pow(1.0 / err, 0.25);
+                factor = std::max(factor, 0.1);
+                h *= factor;
+                h = std::max(h, m_h_min);
+            }
+        }
+
+        m_h_current = h;
+        return {state, dt};
+    }
+
+    VectorStepResult RK45Integrator::StepVector(
+        const StateVector &current,
+        double dt,
+        std::function<DerivativeVector(const StateVector &)> derivativeFunc)
+    {
+        size_t n = current.size();
+
+        double h = (m_h_current > 0.0) ? m_h_current : dt;
+        h = std::min(h, dt);
+        h = std::clamp(h, m_h_min, m_h_max);
+
+        double t_remaining = dt;
+        StateVector state = current;
+
+        while (t_remaining > m_h_min)
+        {
+            h = std::min(h, t_remaining);
+
+            DerivativeVector k1 = derivativeFunc(state);
+
+            StateVector s2(n);
+            for (size_t i = 0; i < n; i++)
+                s2[i] = state[i] + h * b21 * k1[i];
+            DerivativeVector k2 = derivativeFunc(s2);
+
+            StateVector s3(n);
+            for (size_t i = 0; i < n; i++)
+                s3[i] = state[i] + h * (b31 * k1[i] + b32 * k2[i]);
+            DerivativeVector k3 = derivativeFunc(s3);
+
+            StateVector s4(n);
+            for (size_t i = 0; i < n; i++)
+                s4[i] = state[i] + h * (b41 * k1[i] + b42 * k2[i] + b43 * k3[i]);
+            DerivativeVector k4 = derivativeFunc(s4);
+
+            StateVector s5(n);
+            for (size_t i = 0; i < n; i++)
+                s5[i] = state[i] + h * (b51 * k1[i] + b52 * k2[i] + b53 * k3[i] + b54 * k4[i]);
+            DerivativeVector k5 = derivativeFunc(s5);
+
+            StateVector s6(n);
+            for (size_t i = 0; i < n; i++)
+                s6[i] = state[i] + h * (b61 * k1[i] + b62 * k2[i] + b63 * k3[i] + b64 * k4[i] + b65 * k5[i]);
+            DerivativeVector k6 = derivativeFunc(s6);
+
+            // 5th order solution
+            StateVector y5(n);
+            for (size_t i = 0; i < n; i++)
+                y5[i] = state[i] + h * (c1 * k1[i] + c3 * k3[i] + c4 * k4[i] + c5 * k5[i] + c6 * k6[i]);
+
+            DerivativeVector k7 = derivativeFunc(y5);
+
+            // 4th order solution
+            StateVector y4(n);
+            for (size_t i = 0; i < n; i++)
+                y4[i] = state[i] + h * (d1 * k1[i] + d3 * k3[i] + d4 * k4[i] + d5 * k5[i] + d6 * k6[i] + d7 * k7[i]);
+
+            // Error estimate
+            double err = 0.0;
+            for (size_t i = 0; i < n; i++)
+            {
+                double scale = m_atol + m_rtol * std::abs(y5[i]);
+                double e = std::abs(y5[i] - y4[i]) / scale;
+                if (e > err)
+                    err = e;
+            }
+
+            if (err <= 1.0)
+            {
+                state = y5;
+                t_remaining -= h;
+
+                double factor = (err > 1e-15)
+                                    ? 0.84 * std::pow(1.0 / err, 0.25)
+                                    : 4.0;
+                factor = std::clamp(factor, 0.1, 4.0);
+                h *= factor;
+                h = std::clamp(h, m_h_min, m_h_max);
+            }
+            else
+            {
                 double factor = 0.84 * std::pow(1.0 / err, 0.25);
                 factor = std::max(factor, 0.1);
                 h *= factor;

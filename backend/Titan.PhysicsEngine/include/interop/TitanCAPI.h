@@ -75,6 +75,16 @@ extern "C"
         int stageIndex;
         int isComplete;
         int status; // 0 = running, 1 = completed, 2 = impact, 3 = error
+
+        // 6DOF attitude data
+        double attitude_w, attitude_x, attitude_y, attitude_z;
+        double angularVelocity_x, angularVelocity_y, angularVelocity_z;
+        double dynamicPressure, machNumber;
+
+        // Reaction wheel state
+        double wheelSpeed[4];
+        double wheelMomentum[4];
+        int wheelCount;
     } TitanTelemetry;
 
     // Event types matching titan::events::EventType
@@ -100,7 +110,7 @@ extern "C"
     TITAN_API TitanTelemetry titan_get_telemetry(TitanSim *sim);
     TITAN_API void titan_destroy(TitanSim *sim);
 
-    // New: event and telemetry callbacks
+    // Event and telemetry callbacks
     TITAN_API void titan_set_event_callback(TitanSim *sim,
                                             TitanEventCallback cb,
                                             void *userData);
@@ -108,8 +118,22 @@ extern "C"
                                                 TitanTelemetryCallback cb,
                                                 void *userData);
 
-    // New: error handling
+    // Error handling
     TITAN_API int titan_get_last_error(TitanSim *sim, char *buffer, int bufferSize);
+
+    // 6DOF attitude control
+    TITAN_API void titan_set_initial_attitude(TitanSim *sim,
+                                              double w, double x, double y, double z);
+    TITAN_API void titan_add_reaction_wheel(TitanSim *sim,
+                                             double ax, double ay, double az,
+                                             double maxTorque, double maxMomentum,
+                                             double wheelInertia);
+    TITAN_API void titan_set_pointing_mode(TitanSim *sim, int mode);
+    // mode: 0=none, 1=inertial, 2=nadir, 3=sun
+
+    // Data export
+    TITAN_API int titan_export_csv(TitanSim *sim, const char *filename);
+    TITAN_API int titan_export_json(TitanSim *sim, const char *filename);
 
 #ifdef __cplusplus
 }

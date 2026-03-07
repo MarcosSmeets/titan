@@ -17,6 +17,9 @@
 #include "orbital/OrbitalMechanics.h"
 #include "events/EventBus.h"
 #include "telemetry/TelemetryBus.h"
+#include "gnc/PIDController.h"
+#include "gnc/PointingMode.h"
+#include "export/DataExporter.h"
 #include <memory>
 #include <cmath>
 #include <cstring>
@@ -25,7 +28,7 @@
 struct TitanSim
 {
     std::unique_ptr<titan::simulation::Simulation> simulation;
-    std::unique_ptr<titan::vehicle::Vehicle> vehicleRef; // non-owning tracking
+    std::unique_ptr<titan::vehicle::Vehicle> vehicleRef;
     TitanSimConfig config;
     std::shared_ptr<titan::events::EventBus> eventBus;
     std::shared_ptr<titan::telemetry::TelemetryBus> telemetryBus;
@@ -90,13 +93,9 @@ extern "C"
         sim->telemetryCallback = nullptr;
         sim->telemetryUserData = nullptr;
 
-        // Create event bus
         sim->eventBus = std::make_shared<titan::events::EventBus>();
-
-        // Create telemetry bus
         sim->telemetryBus = std::make_shared<titan::telemetry::TelemetryBus>();
 
-        // Create simulation
         sim->simulation = std::make_unique<titan::simulation::Simulation>(
             body,
             std::move(integrator),
@@ -164,17 +163,6 @@ extern "C"
             return;
         }
 
-        // Create or get vehicle
-        auto vehicle = std::make_unique<titan::vehicle::Vehicle>();
-
-        // We need to add stage to the existing vehicle or create new one
-        // Since we can't get the vehicle back, we track stages through the sim
-        const auto *existingVehicle = sim->simulation->GetVehicle();
-
-        auto newVehicle = std::make_unique<titan::vehicle::Vehicle>();
-
-        // Copy existing stages concept — unfortunately we need to rebuild
-        // For the C API, we accumulate stages then set the vehicle
         if (!sim->vehicleRef)
             sim->vehicleRef = std::make_unique<titan::vehicle::Vehicle>();
 
@@ -186,20 +174,11 @@ extern "C"
             stage.referenceArea,
             stage.dragCoefficient));
 
-        // Rebuild vehicle for simulation (add atmospheric drag from latest stage)
-        auto freshVehicle = std::make_unique<titan::vehicle::Vehicle>();
-
-        // We need to track stages separately for rebuild
-        // Simple approach: just set the vehicle reference directly
         sim->simulation->SetVehicle(std::move(sim->vehicleRef));
         sim->vehicleRef = nullptr;
 
-        // Re-create vehicleRef for tracking
-        // Actually, let's simplify: just track the vehicle inside simulation
-        // and add drag force for latest stage config
         auto body = sim->simulation->GetBody();
 
-        // Add drag force for this stage configuration
         if (sim->config.useMachCd)
         {
             auto atmosphere = sim->simulation->GetAtmosphere();
@@ -253,6 +232,23 @@ extern "C"
         tel.isComplete = (simStatus == titan::simulation::SimStatus::Completed) ? 1 : 0;
         tel.status = static_cast<int>(simStatus);
 
+        // 6DOF attitude data
+        tel.attitude_w = state.attitude.w;
+        tel.attitude_x = state.attitude.x;
+        tel.attitude_y = state.attitude.y;
+        tel.attitude_z = state.attitude.z;
+
+        tel.angularVelocity_x = state.angularVelocity.x;
+        tel.angularVelocity_y = state.angularVelocity.y;
+        tel.angularVelocity_z = state.angularVelocity.z;
+
+        tel.wheelCount = 0;
+        for (int i = 0; i < 4; i++)
+        {
+            tel.wheelSpeed[i] = 0.0;
+            tel.wheelMomentum[i] = 0.0;
+        }
+
         return tel;
     }
 
@@ -261,7 +257,7 @@ extern "C"
         TitanTelemetry tel{};
         if (!sim || !sim->simulation)
         {
-            tel.status = 3; // Error
+            tel.status = 3;
             return tel;
         }
 
@@ -339,5 +335,83 @@ extern "C"
         std::strncpy(buffer, sim->lastError.c_str(), bufferSize - 1);
         buffer[bufferSize - 1] = '\0';
         return static_cast<int>(sim->lastError.size());
+    }
+
+    TITAN_API void titan_set_initial_attitude(TitanSim *sim,
+                                              double w, double x, double y, double z)
+    {
+        if (!sim || !sim->simulation)
+            return;
+
+        auto state = sim->simulation->GetState();
+        titan::simulation::SimState newState = state;
+        newState.attitude = titan::math::Quaternion(w, x, y, z).Normalized();
+        sim->simulation->SetInitialState(newState);
+    }
+
+    TITAN_API void titan_add_reaction_wheel(TitanSim *sim,
+                                             double ax, double ay, double az,
+                                             double maxTorque, double maxMomentum,
+                                             double wheelInertia)
+    {
+        if (!sim || !sim->simulation)
+            return;
+
+        sim->simulation->AddReactionWheel(
+            titan::math::Vector3(ax, ay, az),
+            maxTorque, maxMomentum, wheelInertia);
+    }
+
+    TITAN_API void titan_set_pointing_mode(TitanSim *sim, int mode)
+    {
+        if (!sim || !sim->simulation)
+            return;
+
+        switch (mode)
+        {
+        case 1:
+            sim->simulation->SetPointingMode(
+                std::make_unique<titan::gnc::InertialHold>());
+            break;
+        case 2:
+            sim->simulation->SetPointingMode(
+                std::make_unique<titan::gnc::NadirPointing>());
+            break;
+        case 3:
+            sim->simulation->SetPointingMode(
+                std::make_unique<titan::gnc::SunPointing>());
+            break;
+        default:
+            sim->simulation->SetPointingMode(nullptr);
+            break;
+        }
+
+        // Auto-create a PID controller if none exists
+        if (mode > 0)
+        {
+            titan::gnc::PIDGains gains;
+            gains.Kp = 5.0;
+            gains.Ki = 0.1;
+            gains.Kd = 2.0;
+            gains.maxIntegral = 10.0;
+            sim->simulation->SetController(
+                std::make_unique<titan::gnc::PIDAttitudeController>(gains));
+        }
+    }
+
+    TITAN_API int titan_export_csv(TitanSim *sim, const char *filename)
+    {
+        if (!sim || !sim->telemetryBus || !filename)
+            return 0;
+
+        return titan::data::DataExporter::ExportCSV(*sim->telemetryBus, filename) ? 1 : 0;
+    }
+
+    TITAN_API int titan_export_json(TitanSim *sim, const char *filename)
+    {
+        if (!sim || !sim->telemetryBus || !filename)
+            return 0;
+
+        return titan::data::DataExporter::ExportJSON(*sim->telemetryBus, filename) ? 1 : 0;
     }
 }

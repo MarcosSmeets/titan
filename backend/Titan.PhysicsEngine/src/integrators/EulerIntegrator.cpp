@@ -19,4 +19,19 @@ namespace titan::integrators
 
         return {next, dt};
     }
+
+    VectorStepResult EulerIntegrator::StepVector(
+        const StateVector &current,
+        double dt,
+        std::function<DerivativeVector(const StateVector &)> derivativeFunc)
+    {
+        size_t n = current.size();
+        DerivativeVector d = derivativeFunc(current);
+
+        StateVector next(n);
+        for (size_t i = 0; i < n; i++)
+            next[i] = current[i] + d[i] * dt;
+
+        return {next, dt};
+    }
 }

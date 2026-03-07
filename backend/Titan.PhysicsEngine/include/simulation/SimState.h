@@ -1,5 +1,6 @@
 #pragma once
 #include "math/Vector3.h"
+#include "math/Quaternion.h"
 
 namespace titan::simulation
 {
@@ -9,6 +10,9 @@ namespace titan::simulation
         titan::math::Vector3 velocity;
         double mass;
         double time;
+
+        titan::math::Quaternion attitude;
+        titan::math::Vector3 angularVelocity;
 
         SimState()
             : mass(0.0), time(0.0) {}

@@ -4,6 +4,7 @@
 #include <functional>
 #include "simulation/Stage.h"
 #include "events/EventBus.h"
+#include "math/Vector3.h"
 
 namespace titan::vehicle
 {
@@ -111,6 +112,20 @@ namespace titan::vehicle
             return m_currentStageIndex >= m_stages.size() ||
                    (m_stages[m_currentStageIndex].IsDepleted() &&
                     (m_currentStageIndex + 1) >= m_stages.size());
+        }
+
+        titan::math::Vector3 GetInertia() const
+        {
+            double Ixx = 0.0, Iyy = 0.0, Izz = 0.0;
+            for (size_t i = m_currentStageIndex; i < m_stages.size(); i++)
+            {
+                double ix, iy, iz;
+                m_stages[i].GetInertia(ix, iy, iz);
+                Ixx += ix;
+                Iyy += iy;
+                Izz += iz;
+            }
+            return titan::math::Vector3(Ixx, Iyy, Izz);
         }
 
         size_t GetCurrentStageIndex() const { return m_currentStageIndex; }

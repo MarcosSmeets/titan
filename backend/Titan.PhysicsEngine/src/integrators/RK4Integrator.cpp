@@ -67,4 +67,38 @@ namespace titan::integrators
 
         return {next, dt};
     }
+
+    VectorStepResult RK4Integrator::StepVector(
+        const StateVector &current,
+        double dt,
+        std::function<DerivativeVector(const StateVector &)> derivativeFunc)
+    {
+        size_t n = current.size();
+
+        DerivativeVector k1 = derivativeFunc(current);
+
+        StateVector s2(n);
+        for (size_t i = 0; i < n; i++)
+            s2[i] = current[i] + 0.5 * dt * k1[i];
+
+        DerivativeVector k2 = derivativeFunc(s2);
+
+        StateVector s3(n);
+        for (size_t i = 0; i < n; i++)
+            s3[i] = current[i] + 0.5 * dt * k2[i];
+
+        DerivativeVector k3 = derivativeFunc(s3);
+
+        StateVector s4(n);
+        for (size_t i = 0; i < n; i++)
+            s4[i] = current[i] + dt * k3[i];
+
+        DerivativeVector k4 = derivativeFunc(s4);
+
+        StateVector next(n);
+        for (size_t i = 0; i < n; i++)
+            next[i] = current[i] + (dt / 6.0) * (k1[i] + 2.0 * k2[i] + 2.0 * k3[i] + k4[i]);
+
+        return {next, dt};
+    }
 }

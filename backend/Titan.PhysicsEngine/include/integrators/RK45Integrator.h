@@ -17,6 +17,11 @@ namespace titan::integrators
             double dt,
             std::function<Derivative(const State &)> derivativeFunc) override;
 
+        VectorStepResult StepVector(
+            const StateVector &current,
+            double dt,
+            std::function<DerivativeVector(const StateVector &)> derivativeFunc) override;
+
     private:
         double m_atol;
         double m_rtol;
@@ -29,7 +34,6 @@ namespace titan::integrators
         static constexpr double a3 = 3.0 / 10.0;
         static constexpr double a4 = 4.0 / 5.0;
         static constexpr double a5 = 8.0 / 9.0;
-        // a6 = 1.0, a7 = 1.0
 
         static constexpr double b21 = 1.0 / 5.0;
 
@@ -53,7 +57,6 @@ namespace titan::integrators
 
         // 5th order weights
         static constexpr double c1 = 35.0 / 384.0;
-        // c2 = 0
         static constexpr double c3 = 500.0 / 1113.0;
         static constexpr double c4 = 125.0 / 192.0;
         static constexpr double c5 = -2187.0 / 6784.0;
@@ -61,7 +64,6 @@ namespace titan::integrators
 
         // 4th order weights (for error estimate)
         static constexpr double d1 = 5179.0 / 57600.0;
-        // d2 = 0
         static constexpr double d3 = 7571.0 / 16695.0;
         static constexpr double d4 = 393.0 / 640.0;
         static constexpr double d5 = -92097.0 / 339200.0;

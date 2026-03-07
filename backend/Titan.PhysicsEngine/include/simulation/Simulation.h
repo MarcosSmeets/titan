@@ -12,6 +12,11 @@
 #include "environment/CelestialBody.h"
 #include "environment/Atmosphere.h"
 #include "orbital/OrbitalMechanics.h"
+#include "gnc/Controller.h"
+#include "gnc/Navigator.h"
+#include "gnc/Actuator.h"
+#include "gnc/PointingMode.h"
+#include "math/Quaternion.h"
 
 namespace titan::simulation
 {
@@ -58,6 +63,12 @@ namespace titan::simulation
         void SetMaxG(double maxG);
         void SetInitialState(const SimState &state);
 
+        void SetController(std::unique_ptr<titan::gnc::Controller> controller);
+        void SetNavigator(std::unique_ptr<titan::gnc::Navigator> navigator);
+        void SetPointingMode(std::unique_ptr<titan::gnc::PointingMode> mode);
+        void AddReactionWheel(titan::math::Vector3 axis, double maxTorque,
+                              double maxMomentum, double wheelInertia);
+
         StepResult Step(double dt);
 
         const SimState &GetState() const { return m_state; }
@@ -69,6 +80,9 @@ namespace titan::simulation
 
     private:
         titan::math::Vector3 ComputeTotalAcceleration(
+            const SimState &state, double time) const;
+
+        titan::math::Vector3 ComputeTotalTorque(
             const SimState &state, double time) const;
 
         void PublishTelemetry();
@@ -93,6 +107,23 @@ namespace titan::simulation
         double m_maxG;
         double m_maxDynamicPressure;
         bool m_maxQReported;
+
+        // GNC
+        std::unique_ptr<titan::gnc::Controller> m_controller;
+        std::unique_ptr<titan::gnc::Navigator> m_navigator;
+        std::unique_ptr<titan::gnc::PointingMode> m_pointingMode;
+
+        struct ReactionWheelState
+        {
+            titan::math::Vector3 axis;
+            double maxTorque;
+            double maxMomentum;
+            double wheelInertia;
+            double wheelSpeed;
+        };
+        std::vector<ReactionWheelState> m_reactionWheels;
+
+        titan::math::Vector3 m_controlTorque;
 
         static constexpr double g0 = 9.80665;
     };

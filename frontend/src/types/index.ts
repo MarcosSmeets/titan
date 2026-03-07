@@ -8,10 +8,35 @@ export interface TelemetryPoint {
   inclination: number;
   raan: number;
   semiMajorAxis: number;
+  argumentOfPeriapsis: number;
+  trueAnomaly: number;
   x: number;
   y: number;
   z: number;
+  vx: number;
+  vy: number;
+  vz: number;
   stageIndex: number;
+  status: number;
+  isComplete: number;
+
+  // 6DOF attitude
+  attitudeW: number;
+  attitudeX: number;
+  attitudeY: number;
+  attitudeZ: number;
+  angularVelocityX: number;
+  angularVelocityY: number;
+  angularVelocityZ: number;
+
+  // Aerodynamics
+  dynamicPressure: number;
+  machNumber: number;
+
+  // Reaction wheels
+  wheelSpeed: number[];
+  wheelMomentum: number[];
+  wheelCount: number;
 }
 
 export interface SimulationResult {

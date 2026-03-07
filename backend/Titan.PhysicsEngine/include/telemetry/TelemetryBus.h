@@ -10,8 +10,9 @@ namespace titan::telemetry
     {
         double scalar;
         double x, y, z; // for vector values
+        double w;        // for quaternion values
 
-        TelemetryValue() : scalar(0.0), x(0.0), y(0.0), z(0.0) {}
+        TelemetryValue() : scalar(0.0), x(0.0), y(0.0), z(0.0), w(0.0) {}
 
         static TelemetryValue Scalar(double v)
         {
@@ -23,6 +24,16 @@ namespace titan::telemetry
         static TelemetryValue Vec3(double x_, double y_, double z_)
         {
             TelemetryValue tv;
+            tv.x = x_;
+            tv.y = y_;
+            tv.z = z_;
+            return tv;
+        }
+
+        static TelemetryValue Quat(double w_, double x_, double y_, double z_)
+        {
+            TelemetryValue tv;
+            tv.w = w_;
             tv.x = x_;
             tv.y = y_;
             tv.z = z_;

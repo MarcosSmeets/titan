@@ -21,5 +21,12 @@ namespace titan::physics
                 return {};
             return ComputeForce(state, time) / state.mass;
         }
+
+        virtual titan::math::Vector3 ComputeTorque(
+            const titan::simulation::SimState & /*state*/,
+            double /*time*/) const
+        {
+            return {};
+        }
     };
 }

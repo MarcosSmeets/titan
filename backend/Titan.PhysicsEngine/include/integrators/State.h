@@ -1,9 +1,14 @@
 #pragma once
+#include <vector>
 
 namespace titan::integrators
 {
+    using StateVector = std::vector<double>;
+    using DerivativeVector = std::vector<double>;
+
     /*
-        Represents full 3D translational state.
+        Legacy struct kept for backward compatibility with
+        LaunchVehicle2D, LaunchVehicle3D, and Guidance interfaces.
     */
     struct State
     {
