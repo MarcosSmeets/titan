@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import TelemetryDashboard from './components/TelemetryDashboard';
-import MissionControlDashboard from './components/MissionControlDashboard';
 import HeroSection from './components/HeroSection';
 import RocketBuilderModal from './components/RocketBuilder';
 import SimulationHistory from './components/SimulationHistory';
@@ -237,7 +236,6 @@ function SimulationPage({
   onRelaunch: (request: SimulationRequest) => void;
 }) {
   const latest = telemetry[telemetry.length - 1];
-  const [viewMode, setViewMode] = useState<'mcc' | 'classic'>('mcc');
   const [showEditor, setShowEditor] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
   const [editStages, setEditStages] = useState<StageRequest[]>([]);
@@ -304,59 +302,6 @@ function SimulationPage({
 
   const hasCustomStages = editStages.length > 0;
 
-  // MCC full-screen mode
-  if (viewMode === 'mcc') {
-    return (
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-        {/* Toolbar */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 12px', background: '#0a0a14', borderBottom: '1px solid #151520' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {orbitResult && (
-              <span style={{
-                padding: '2px 8px', borderRadius: '3px', fontSize: '10px', fontWeight: 700, letterSpacing: '1px',
-                background: orbitResult.achieved ? 'rgba(34,170,68,0.12)' : 'rgba(255,68,68,0.12)',
-                color: orbitResult.achieved ? '#22aa44' : '#ff4444',
-                border: `1px solid ${orbitResult.achieved ? 'rgba(34,170,68,0.25)' : 'rgba(255,68,68,0.25)'}`,
-              }}>
-                {orbitResult.achieved ? 'ORBIT ACHIEVED' : 'ORBIT NOT ACHIEVED'}
-              </span>
-            )}
-            <span style={{ fontSize: '10px', color: '#445' }}>Target: {editTargetAlt} km</span>
-          </div>
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-            <button
-              onClick={() => setViewMode('classic')}
-              style={{ ...mccToolBtnStyle, color: '#667' }}
-            >
-              CLASSIC VIEW
-            </button>
-            {simState === 'complete' && (
-              <>
-                <button onClick={() => { setViewMode('classic'); setShowEditor(true); setShowCompare(false); }} style={mccToolBtnStyle}>
-                  EDIT
-                </button>
-                <button onClick={onNewLaunch} style={mccToolBtnStyle}>
-                  NEW LAUNCH
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-        {/* Dashboard */}
-        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-          <MissionControlDashboard
-            telemetry={telemetry}
-            events={events}
-            rocketName={rocketName || 'Simulation'}
-            isLive={isActive}
-            simState={simState}
-            targetAltitude={lastRequest?.targetAltitude}
-          />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px 32px' }}>
       {/* Header row */}
@@ -386,12 +331,6 @@ function SimulationPage({
           )}
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            onClick={() => setViewMode('mcc')}
-            style={{ ...actionBtnStyle, background: 'rgba(0,255,136,0.08)', color: '#00ff88', borderColor: 'rgba(0,255,136,0.25)' }}
-          >
-            MCC View
-          </button>
           {simState === 'complete' && (
             <>
               <button
@@ -982,18 +921,6 @@ const relaunchBtnStyle: React.CSSProperties = {
   cursor: 'pointer',
   letterSpacing: '2px',
   boxShadow: '0 2px 10px rgba(255,50,50,0.3)',
-};
-
-const mccToolBtnStyle: React.CSSProperties = {
-  padding: '4px 12px',
-  background: 'rgba(255,255,255,0.04)',
-  border: '1px solid #1a1a2e',
-  borderRadius: '3px',
-  color: '#4488ff',
-  cursor: 'pointer',
-  fontSize: '9px',
-  fontWeight: 700,
-  letterSpacing: '1.5px',
 };
 
 const advisorBoxStyle: React.CSSProperties = {
