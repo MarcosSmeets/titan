@@ -457,6 +457,15 @@ function SimulationPage({
     latest.attitudeW ?? 1, latest.attitudeX ?? 0, latest.attitudeY ?? 0, latest.attitudeZ ?? 0
   ) : { roll: 0, pitch: 0, yaw: 0 };
 
+  const orbitClassification = useMemo(() => {
+    if (!latest) return 'prelaunch' as const;
+    const periKm = latest.periapsis / 1000;
+    const ecc = latest.eccentricity;
+    if (periKm < 100 || ecc > 1) return 'suborbital' as const;
+    if (ecc < 0.02) return 'circular' as const;
+    return 'elliptical' as const;
+  }, [latest]);
+
   const maxQ = useMemo(() => Math.max(...telemetry.map(t => t.dynamicPressure ?? 0), 0), [telemetry]);
   const maxG = useMemo(() => {
     if (telemetry.length <= 1) return 0;
@@ -559,106 +568,125 @@ function SimulationPage({
       </div>
 
       {/* ===== MAIN AREA ===== */}
-      <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
 
-        {/* LEFT: Trajectory Viewer (60%) */}
-        <div style={{ flex: '0 0 60%', minHeight: 0, position: 'relative' }}>
-          <TrajectoryViewer
-            telemetry={telemetry}
-            targetAltitude={lastRequest?.targetAltitude}
-            stageEvents={stageMarkers}
-            isLive={isActive}
-          />
-        </div>
+        {/* TOP ROW: Trajectory + Right Panel */}
+        <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
 
-        {/* RIGHT: Telemetry panels (40%) */}
-        <div style={{ flex: '0 0 40%', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderLeft: '1px solid #151520' }}>
-          <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
-            {latest ? (
-              <>
-                {/* Flight Telemetry */}
-                <Panel title="FLT TELEMETRY" accent="#4488ff">
-                  <div style={mccDataGridStyle}>
-                    <DataField label="ALT" value={`${(latest.altitude / 1000).toFixed(2)} km`} color="#4488ff" mono />
-                    <DataField label="VEL" value={`${latest.velocity.toFixed(1)} m/s`} color="#ff4488" mono />
-                    <DataField label="V/V" value={`${((latest.vy ?? 0) > 0 ? '+' : '')}${((latest.vy ?? 0) / 1000).toFixed(2)} km/s`} color="#88aaff" mono />
-                    <DataField label="V/H" value={`${((latest.vx ?? 0) / 1000).toFixed(2)} km/s`} color="#88ccff" mono />
-                    <DataField label="MACH" value={`${(latest.machNumber ?? 0).toFixed(2)}`} color="#cc88ff" mono />
-                    <DataField label="Q" value={`${((latest.dynamicPressure ?? 0) / 1000).toFixed(2)} kPa`} color="#ff8844" mono />
-                    <DataField label="G-LOAD" value={`${maxG.toFixed(1)} g`} color="#ff6644" mono />
-                    <DataField label="MAX-Q" value={`${(maxQ / 1000).toFixed(1)} kPa`} color="#ffaa44" mono />
+          {/* LEFT: Trajectory Viewer (75%) */}
+          <div style={{ flex: '0 0 75%', minHeight: 0, position: 'relative' }}>
+            <TrajectoryViewer
+              telemetry={telemetry}
+              targetAltitude={lastRequest?.targetAltitude}
+              stageEvents={stageMarkers}
+              isLive={isActive}
+              orbitClassification={orbitClassification}
+            />
+          </div>
+
+          {/* RIGHT: Telemetry panels (25%) */}
+          <div style={{ flex: '0 0 25%', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderLeft: '1px solid #151520' }}>
+            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+              {latest ? (
+                <>
+                  {/* Flight Telemetry */}
+                  <Panel title="FLT TELEMETRY" accent="#4488ff">
+                    <div style={mccDataGridStyle}>
+                      <DataField label="ALT" value={`${(latest.altitude / 1000).toFixed(2)} km`} color="#4488ff" mono />
+                      <DataField label="VEL" value={`${latest.velocity.toFixed(1)} m/s`} color="#ff4488" mono />
+                      <DataField label="V/V" value={`${((latest.vy ?? 0) > 0 ? '+' : '')}${((latest.vy ?? 0) / 1000).toFixed(2)} km/s`} color="#88aaff" mono />
+                      <DataField label="V/H" value={`${((latest.vx ?? 0) / 1000).toFixed(2)} km/s`} color="#88ccff" mono />
+                      <DataField label="MACH" value={`${(latest.machNumber ?? 0).toFixed(2)}`} color="#cc88ff" mono />
+                      <DataField label="Q" value={`${((latest.dynamicPressure ?? 0) / 1000).toFixed(2)} kPa`} color="#ff8844" mono />
+                      <DataField label="G-LOAD" value={`${maxG.toFixed(1)} g`} color="#ff6644" mono />
+                      <DataField label="MAX-Q" value={`${(maxQ / 1000).toFixed(1)} kPa`} color="#ffaa44" mono />
+                    </div>
+                  </Panel>
+
+                  {/* Orbital Parameters */}
+                  <Panel title="ORB PARAMS" accent="#44cc66">
+                    <div style={mccDataGridStyle}>
+                      <DataField label="APO" value={`${(latest.apoapsis / 1000).toFixed(2)} km`} color="#44cc66" mono />
+                      <DataField label="PERI" value={`${(latest.periapsis / 1000).toFixed(2)} km`} color="#ff8844" mono />
+                      <DataField label="ECC" value={latest.eccentricity.toFixed(6)} color="#aa44ff" mono />
+                      <DataField label="INC" value={`${(latest.inclination * 180 / Math.PI).toFixed(3)}${'\u00B0'}`} color="#ff88aa" mono />
+                      <DataField label="SMA" value={`${(latest.semiMajorAxis / 1000).toFixed(2)} km`} color="#44aaff" mono />
+                      <DataField label="RAAN" value={`${(latest.raan * 180 / Math.PI).toFixed(3)}${'\u00B0'}`} color="#88ccff" mono />
+                      <DataField label="ARG-P" value={`${((latest.argumentOfPeriapsis ?? 0) * 180 / Math.PI).toFixed(2)}${'\u00B0'}`} color="#aabb88" mono />
+                      <DataField label="TA" value={`${((latest.trueAnomaly ?? 0) * 180 / Math.PI).toFixed(2)}${'\u00B0'}`} color="#bbaa88" mono />
+                    </div>
+                  </Panel>
+
+                  {/* NavBall */}
+                  <Panel title="NAVBALL" accent="#88aaff">
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0' }}>
+                      <NavBall
+                        roll={euler.roll} pitch={euler.pitch} yaw={euler.yaw}
+                        size={280}
+                        vx={latest.vx} vy={latest.vy} vz={latest.vz ?? 0}
+                        px={latest.x} py={latest.y} pz={latest.z ?? 0}
+                      />
+                    </div>
+                  </Panel>
+                </>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#334' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '13px', letterSpacing: '3px', color: '#556', marginBottom: '8px' }}>AWAITING TELEMETRY</div>
+                    <div style={{ fontSize: '11px', color: '#334' }}>Data will appear when simulation starts</div>
                   </div>
-                </Panel>
-
-                {/* Orbital Parameters */}
-                <Panel title="ORB PARAMS" accent="#44cc66">
-                  <div style={mccDataGridStyle}>
-                    <DataField label="APO" value={`${(latest.apoapsis / 1000).toFixed(2)} km`} color="#44cc66" mono />
-                    <DataField label="PERI" value={`${(latest.periapsis / 1000).toFixed(2)} km`} color="#ff8844" mono />
-                    <DataField label="ECC" value={latest.eccentricity.toFixed(6)} color="#aa44ff" mono />
-                    <DataField label="INC" value={`${(latest.inclination * 180 / Math.PI).toFixed(3)}${'\u00B0'}`} color="#ff88aa" mono />
-                    <DataField label="SMA" value={`${(latest.semiMajorAxis / 1000).toFixed(2)} km`} color="#44aaff" mono />
-                    <DataField label="RAAN" value={`${(latest.raan * 180 / Math.PI).toFixed(3)}${'\u00B0'}`} color="#88ccff" mono />
-                    <DataField label="ARG-P" value={`${((latest.argumentOfPeriapsis ?? 0) * 180 / Math.PI).toFixed(2)}${'\u00B0'}`} color="#aabb88" mono />
-                    <DataField label="TA" value={`${((latest.trueAnomaly ?? 0) * 180 / Math.PI).toFixed(2)}${'\u00B0'}`} color="#bbaa88" mono />
-                  </div>
-                </Panel>
-
-                {/* NavBall */}
-                <Panel title="NAVBALL" accent="#88aaff">
-                  <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0' }}>
-                    <NavBall roll={euler.roll} pitch={euler.pitch} yaw={euler.yaw} size={180} />
-                  </div>
-                </Panel>
-
-                {/* Mission Events */}
-                <Panel title="MISSION EVENTS" accent="#ffaa00">
-                  <MissionEventTimeline events={events} currentTime={latest.time} isLive={isActive} />
-                </Panel>
-              </>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#334' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '13px', letterSpacing: '3px', color: '#556', marginBottom: '8px' }}>AWAITING TELEMETRY</div>
-                  <div style={{ fontSize: '11px', color: '#334' }}>Data will appear when simulation starts</div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* ===== CHART STRIP (200px) ===== */}
-      <div style={{ flexShrink: 0, borderTop: '1px solid #151520', background: '#0a0a12' }}>
-        {/* Tab bar */}
-        <div style={{ display: 'flex', gap: '0' }}>
-          {(['altitude', 'velocity', 'orbit', 'attitude', 'aero'] as const).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setSelectedChart(tab)}
-              style={{
-                flex: 1, padding: '5px 4px', border: 'none', cursor: 'pointer',
-                fontSize: '9px', letterSpacing: '1.5px', fontWeight: 700,
-                background: selectedChart === tab ? '#0d0d1a' : '#060610',
-                color: selectedChart === tab ? mccChartTabColors[tab] : '#334',
-                borderBottom: selectedChart === tab ? `2px solid ${mccChartTabColors[tab]}` : '2px solid transparent',
-              }}
-            >
-              {tab.toUpperCase()}
-            </button>
-          ))}
-        </div>
-        {/* Chart area */}
-        <div style={{ height: '180px', padding: '0' }}>
-          {chartData.length > 1 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              {renderMccChart(selectedChart, chartData, stageTimes)}
-            </ResponsiveContainer>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#334', fontSize: '11px' }}>
-              Chart data will appear here
+        {/* BOTTOM STRIP: Events (35%) | Charts (65%) */}
+        <div style={{ flexShrink: 0, borderTop: '1px solid #151520', background: '#0a0a12', display: 'flex' }}>
+
+          {/* Mission Events — compact bottom-left */}
+          <div style={{ flex: '0 0 35%', borderRight: '1px solid #151520', padding: '4px 8px', maxHeight: '210px', overflowY: 'auto' }}>
+            <div style={{ fontSize: '9px', letterSpacing: '1.5px', fontWeight: 700, color: '#ffaa00', marginBottom: '4px' }}>MISSION EVENTS</div>
+            {latest ? (
+              <MissionEventTimeline events={events} currentTime={latest.time} isLive={isActive} />
+            ) : (
+              <div style={{ fontSize: '10px', color: '#334', letterSpacing: '1px' }}>NO EVENTS</div>
+            )}
+          </div>
+
+          {/* Charts — bottom-right */}
+          <div style={{ flex: '0 0 65%', display: 'flex', flexDirection: 'column' }}>
+            {/* Tab bar */}
+            <div style={{ display: 'flex', gap: '0' }}>
+              {(['altitude', 'velocity', 'orbit', 'attitude', 'aero'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setSelectedChart(tab)}
+                  style={{
+                    flex: 1, padding: '5px 4px', border: 'none', cursor: 'pointer',
+                    fontSize: '9px', letterSpacing: '1.5px', fontWeight: 700,
+                    background: selectedChart === tab ? '#0d0d1a' : '#060610',
+                    color: selectedChart === tab ? mccChartTabColors[tab] : '#334',
+                    borderBottom: selectedChart === tab ? `2px solid ${mccChartTabColors[tab]}` : '2px solid transparent',
+                  }}
+                >
+                  {tab.toUpperCase()}
+                </button>
+              ))}
             </div>
-          )}
+            {/* Chart area */}
+            <div style={{ height: '180px', padding: '0' }}>
+              {chartData.length > 1 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  {renderMccChart(selectedChart, chartData, stageTimes)}
+                </ResponsiveContainer>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#334', fontSize: '11px' }}>
+                  Chart data will appear here
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

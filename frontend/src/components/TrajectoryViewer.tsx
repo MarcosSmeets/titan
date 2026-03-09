@@ -9,6 +9,7 @@ interface TrajectoryViewerProps {
   targetAltitude?: number; // meters
   stageEvents?: { time: number; index: number }[];
   isLive?: boolean;
+  orbitClassification?: 'prelaunch' | 'suborbital' | 'circular' | 'elliptical';
 }
 
 interface ViewState {
@@ -59,6 +60,9 @@ function computeOrbitPath(
   const thetaRange = e >= 1 ? Math.PI * 0.8 : Math.PI * 2;
   const thetaStart = e >= 1 ? -thetaRange / 2 : 0;
 
+  // suppress unused variable warning
+  void energy;
+
   for (let i = 0; i <= nPoints; i++) {
     const theta = thetaStart + (i / nPoints) * thetaRange;
     const denom = 1 + e * Math.cos(theta);
@@ -99,11 +103,21 @@ function computeOrbitPath(
   return { points, apoapsis, periapsis };
 }
 
+// Triangle marker helper
+function markerTriangle(cx: number, cy: number, size: number, pointUp: boolean): string {
+  const h = size * 0.866; // height of equilateral triangle
+  if (pointUp) {
+    return `${cx},${cy - h * 0.67} ${cx - size / 2},${cy + h * 0.33} ${cx + size / 2},${cy + h * 0.33}`;
+  }
+  return `${cx},${cy + h * 0.67} ${cx - size / 2},${cy - h * 0.33} ${cx + size / 2},${cy - h * 0.33}`;
+}
+
 export default function TrajectoryViewer({
   telemetry,
   targetAltitude,
   stageEvents,
   isLive,
+  orbitClassification,
 }: TrajectoryViewerProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -232,6 +246,7 @@ export default function TrajectoryViewer({
 
   const targetOrbitR = targetAltitude ? EARTH_RADIUS_KM + targetAltitude / 1000 : null;
 
+  // Past trajectory (gray dashed)
   const polylineStr = useMemo(() => {
     if (trajectoryPts.length < 2) return '';
     const pts = trajectoryPts.length > 600
@@ -240,10 +255,13 @@ export default function TrajectoryViewer({
     return pts.map(p => `${p.x},${p.y}`).join(' ');
   }, [trajectoryPts]);
 
+  // Predicted orbit path (cyan solid)
   const predictedOrbitStr = useMemo(() => {
     if (orbitPrediction.points.length < 2) return '';
     return orbitPrediction.points.map(p => `${p.x},${p.y}`).join(' ');
   }, [orbitPrediction.points]);
+
+  const isInOrbit = orbitClassification === 'circular' || orbitClassification === 'elliptical';
 
   // Zoom
   const handleWheel = useCallback((e: React.WheelEvent) => {
@@ -291,12 +309,24 @@ export default function TrajectoryViewer({
 
   const altitudeMarks = useMemo(() => {
     const marks: { alt: number; label: string; color: string }[] = [];
-    marks.push({ alt: 100, label: '100 km', color: '#335566' });
+    marks.push({ alt: 100, label: '100 km (Karman)', color: '#335566' });
+    marks.push({ alt: 200, label: '200 km', color: '#2a4455' });
+    marks.push({ alt: 400, label: '400 km (ISS)', color: '#2a4455' });
     if (targetAltitude) {
       marks.push({ alt: targetAltitude / 1000, label: `${(targetAltitude / 1000).toFixed(0)} km TARGET`, color: '#22aa44' });
     }
     return marks;
   }, [targetAltitude]);
+
+  // Orbit status badge config
+  const orbitBadge = useMemo(() => {
+    if (!orbitClassification || orbitClassification === 'prelaunch') return null;
+    switch (orbitClassification) {
+      case 'suborbital': return { label: 'SUBORBITAL', color: '#ff4444', bg: 'rgba(255,68,68,0.15)' };
+      case 'circular': return { label: 'CIRCULAR ORBIT', color: '#22aa44', bg: 'rgba(34,170,68,0.15)' };
+      case 'elliptical': return { label: 'ELLIPTICAL ORBIT', color: '#00ccff', bg: 'rgba(0,204,255,0.15)' };
+    }
+  }, [orbitClassification]);
 
   return (
     <div
@@ -317,11 +347,6 @@ export default function TrajectoryViewer({
         onMouseLeave={handleMouseUp}
       >
         <defs>
-          <linearGradient id="trail-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#ff6644" stopOpacity="0.15" />
-            <stop offset="50%" stopColor="#ff6644" stopOpacity="0.6" />
-            <stop offset="100%" stopColor="#ffcc44" stopOpacity="1" />
-          </linearGradient>
           <radialGradient id="earth-grad" cx="40%" cy="35%">
             <stop offset="0%" stopColor="#1a5588" />
             <stop offset="50%" stopColor="#143d66" />
@@ -347,9 +372,9 @@ export default function TrajectoryViewer({
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
-          {/* Marker arrow for velocity vector */}
+          {/* Marker arrow for velocity vector — yellow */}
           <marker id="vel-arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-            <polygon points="0,0 8,3 0,6" fill="#44ff88" />
+            <polygon points="0,0 8,3 0,6" fill="#ffcc00" />
           </marker>
           <pattern id="stars" x="0" y="0" width={s * 0.08} height={s * 0.08} patternUnits="userSpaceOnUse">
             {Array.from({ length: 12 }, (_, i) => (
@@ -432,36 +457,37 @@ export default function TrajectoryViewer({
           />
         )}
 
-        {/* Predicted orbit path */}
+        {/* Predicted orbit path — cyan solid */}
         {predictedOrbitStr && (
           <polyline
             points={predictedOrbitStr}
             fill="none"
-            stroke="#4488ff"
-            strokeWidth={strokeW * 0.8}
-            strokeDasharray={`${s * 0.003} ${s * 0.004}`}
-            opacity={0.35}
+            stroke="#00ccff"
+            strokeWidth={isInOrbit ? strokeW * 1.5 : strokeW * 1.0}
+            opacity={isInOrbit ? 0.85 : 0.8}
             strokeLinejoin="round"
           />
         )}
 
-        {/* Apoapsis marker */}
+        {/* Apsides line connecting apoapsis and periapsis through Earth center */}
+        {isInOrbit && orbitPrediction.apoapsis && orbitPrediction.periapsis && (
+          <line
+            x1={orbitPrediction.apoapsis.x} y1={orbitPrediction.apoapsis.y}
+            x2={orbitPrediction.periapsis.x} y2={orbitPrediction.periapsis.y}
+            stroke="#ffffff"
+            strokeWidth={s * 0.0005}
+            strokeDasharray={`${s * 0.003} ${s * 0.005}`}
+            opacity={0.25}
+          />
+        )}
+
+        {/* Apoapsis marker — upward triangle */}
         {orbitPrediction.apoapsis && (
           <g>
-            <circle cx={orbitPrediction.apoapsis.x} cy={orbitPrediction.apoapsis.y} r={markerR * 1.8} fill="none" stroke="#44cc66" strokeWidth={s * 0.001} opacity={0.7} />
-            <line
-              x1={orbitPrediction.apoapsis.x - markerR * 0.8}
-              y1={orbitPrediction.apoapsis.y}
-              x2={orbitPrediction.apoapsis.x + markerR * 0.8}
-              y2={orbitPrediction.apoapsis.y}
-              stroke="#44cc66" strokeWidth={s * 0.001} opacity={0.7}
-            />
-            <line
-              x1={orbitPrediction.apoapsis.x}
-              y1={orbitPrediction.apoapsis.y - markerR * 0.8}
-              x2={orbitPrediction.apoapsis.x}
-              y2={orbitPrediction.apoapsis.y + markerR * 0.8}
-              stroke="#44cc66" strokeWidth={s * 0.001} opacity={0.7}
+            <polygon
+              points={markerTriangle(orbitPrediction.apoapsis.x, orbitPrediction.apoapsis.y, markerR * 3, true)}
+              fill="#44cc66"
+              opacity={0.85}
             />
             <text
               x={orbitPrediction.apoapsis.x + markerR * 2.5}
@@ -476,23 +502,13 @@ export default function TrajectoryViewer({
           </g>
         )}
 
-        {/* Periapsis marker */}
+        {/* Periapsis marker — downward triangle */}
         {orbitPrediction.periapsis && (
           <g>
-            <circle cx={orbitPrediction.periapsis.x} cy={orbitPrediction.periapsis.y} r={markerR * 1.8} fill="none" stroke="#ff8844" strokeWidth={s * 0.001} opacity={0.7} />
-            <line
-              x1={orbitPrediction.periapsis.x - markerR * 0.8}
-              y1={orbitPrediction.periapsis.y}
-              x2={orbitPrediction.periapsis.x + markerR * 0.8}
-              y2={orbitPrediction.periapsis.y}
-              stroke="#ff8844" strokeWidth={s * 0.001} opacity={0.7}
-            />
-            <line
-              x1={orbitPrediction.periapsis.x}
-              y1={orbitPrediction.periapsis.y - markerR * 0.8}
-              x2={orbitPrediction.periapsis.x}
-              y2={orbitPrediction.periapsis.y + markerR * 0.8}
-              stroke="#ff8844" strokeWidth={s * 0.001} opacity={0.7}
+            <polygon
+              points={markerTriangle(orbitPrediction.periapsis.x, orbitPrediction.periapsis.y, markerR * 3, false)}
+              fill="#ff8844"
+              opacity={0.85}
             />
             <text
               x={orbitPrediction.periapsis.x + markerR * 2.5}
@@ -524,28 +540,17 @@ export default function TrajectoryViewer({
           </g>
         )}
 
-        {/* Trajectory trail glow */}
+        {/* Past trajectory — gray dashed */}
         {polylineStr && (
           <polyline
             points={polylineStr}
             fill="none"
-            stroke="#ff6644"
-            strokeWidth={strokeW * 3}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            opacity={0.1}
-          />
-        )}
-
-        {/* Trajectory line */}
-        {polylineStr && (
-          <polyline
-            points={polylineStr}
-            fill="none"
-            stroke={isLive ? 'url(#trail-grad)' : '#ff5533'}
+            stroke="#888"
             strokeWidth={strokeW * 1.5}
             strokeLinecap="round"
             strokeLinejoin="round"
+            strokeDasharray={`${s * 0.004} ${s * 0.003}`}
+            opacity={0.6}
           />
         )}
 
@@ -568,7 +573,7 @@ export default function TrajectoryViewer({
           </g>
         ))}
 
-        {/* Velocity vector arrow */}
+        {/* Velocity vector arrow — yellow */}
         {velocityVec && rocketPos && (
           <g filter="url(#glow)">
             <line
@@ -576,7 +581,7 @@ export default function TrajectoryViewer({
               y1={rocketPos.y}
               x2={rocketPos.x + (velocityVec.vx / velocityVec.vMag) * velArrowLen}
               y2={rocketPos.y + (velocityVec.vy / velocityVec.vMag) * velArrowLen}
-              stroke="#44ff88"
+              stroke="#ffcc00"
               strokeWidth={s * 0.0012}
               opacity={0.7}
               markerEnd="url(#vel-arrow)"
@@ -584,7 +589,7 @@ export default function TrajectoryViewer({
             <text
               x={rocketPos.x + (velocityVec.vx / velocityVec.vMag) * velArrowLen * 1.15}
               y={rocketPos.y + (velocityVec.vy / velocityVec.vMag) * velArrowLen * 1.15 + fontSize * 0.3}
-              fill="#44ff88"
+              fill="#ffcc00"
               fontSize={fontSize * 0.55}
               fontFamily="monospace"
               opacity={0.6}
@@ -653,6 +658,21 @@ export default function TrajectoryViewer({
         })()}
       </svg>
 
+      {/* Orbit status badge */}
+      {orbitBadge && (
+        <div style={{
+          position: 'absolute', top: '8px', left: '8px', zIndex: 5,
+          padding: '4px 10px', borderRadius: '4px',
+          background: orbitBadge.bg,
+          border: `1px solid ${orbitBadge.color}40`,
+          color: orbitBadge.color,
+          fontSize: '10px', fontWeight: 700, letterSpacing: '1.5px',
+          fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+        }}>
+          {orbitBadge.label}
+        </div>
+      )}
+
       {/* View controls */}
       <div style={{ position: 'absolute', bottom: '8px', left: '8px', display: 'flex', gap: '4px', zIndex: 5 }}>
         {viewMode === 'manual' && (
@@ -663,13 +683,13 @@ export default function TrajectoryViewer({
       </div>
 
       {/* Legend overlay */}
-      <div style={{ position: 'absolute', top: '6px', right: '6px', display: 'flex', flexDirection: 'column', gap: '2px', zIndex: 5 }}>
-        <LegendItem color="#ff6644" label="Trajectory" />
-        <LegendItem color="#4488ff" dashed label="Predicted orbit" />
-        <LegendItem color="#44ff88" label="Velocity" />
+      <div style={{ position: 'absolute', top: orbitBadge ? '36px' : '6px', right: '6px', display: 'flex', flexDirection: 'column', gap: '2px', zIndex: 5 }}>
+        <LegendItem color="#888" dashed label="Past trajectory" />
+        <LegendItem color="#00ccff" label="Predicted orbit" />
+        <LegendItem color="#ffcc00" label="Velocity" />
         <LegendItem color="#22aa44" dashed label="Target orbit" />
-        <LegendItem color="#44cc66" label="Apoapsis" marker />
-        <LegendItem color="#ff8844" label="Periapsis" marker />
+        <LegendItem color="#44cc66" label="Apoapsis" marker="up" />
+        <LegendItem color="#ff8844" label="Periapsis" marker="down" />
       </div>
     </div>
   );
@@ -684,12 +704,16 @@ export default function TrajectoryViewer({
   }
 }
 
-function LegendItem({ color, label, dashed, marker }: { color: string; label: string; dashed?: boolean; marker?: boolean }) {
+function LegendItem({ color, label, dashed, marker }: { color: string; label: string; dashed?: boolean; marker?: 'up' | 'down' }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(0,0,0,0.6)', padding: '1px 6px', borderRadius: '2px' }}>
       {marker ? (
         <svg width="10" height="10" viewBox="0 0 10 10">
-          <circle cx="5" cy="5" r="3.5" fill="none" stroke={color} strokeWidth="1.5" />
+          {marker === 'up' ? (
+            <polygon points="5,1 1.5,8.5 8.5,8.5" fill={color} />
+          ) : (
+            <polygon points="5,9 1.5,1.5 8.5,1.5" fill={color} />
+          )}
         </svg>
       ) : (
         <svg width="14" height="4" viewBox="0 0 14 4">
