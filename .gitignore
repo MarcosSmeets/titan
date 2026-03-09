@@ -37,11 +37,43 @@
 *.out
 *.app
 
-# debug information files
+# Debug information files
 *.dwo
 
-# ignor build files
+# C++ / CMake build artifacts
 /build/
-/backend/Titan.PhysicsEngine/build/
+**/build/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
 
+# .NET build artifacts
+bin/
+obj/
+
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+# Node
+node_modules/
+package-lock.json
+
+# Frontend build output
+frontend/dist/
+
+# IDE
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
+CLAUDE.md

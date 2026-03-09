@@ -1,17 +1,11 @@
 #pragma once
 #include "guidance/Guidance.h"
 #include "orbital/OrbitalMechanics.h"
+#include "math/Vector3.h"
 #include <cmath>
 
 namespace titan::guidance
 {
-    /*
-        Real two-phase orbital guidance:
-
-        1) Ascent to target apoapsis
-        2) Coast to apoapsis
-        3) Circularization burn
-    */
     class OrbitalCircularizationGuidance : public Guidance
     {
     public:
@@ -27,13 +21,12 @@ namespace titan::guidance
             const titan::integrators::State &state,
             double mu) override
         {
-            titan::math::Vector2 rVec(state.x, state.y);
-            titan::math::Vector2 vVec(state.vx, state.vy);
+            titan::math::Vector3 rVec(state.x, state.y, state.z);
+            titan::math::Vector3 vVec(state.vx, state.vy, state.vz);
 
             auto elements =
                 titan::orbital::OrbitalMechanics::
-                    ComputeOrbitalElements(
-                        rVec, vVec, mu);
+                    ComputeOrbitalElements(rVec, vVec, mu);
 
             double apoapsis =
                 elements.apoapsis - m_earthRadius;
@@ -41,31 +34,23 @@ namespace titan::guidance
             double periapsis =
                 elements.periapsis - m_earthRadius;
 
-            double r = std::sqrt(state.x * state.x +
-                                 state.y * state.y);
-
+            double r = rVec.Magnitude();
             double altitude = r - m_earthRadius;
 
-            // Phase 1: Gravity turn
+            // Phase 1: Gravity turn — pitch over from vertical
             if (apoapsis < m_targetAltitude)
             {
                 double t = altitude / m_targetAltitude;
                 t = std::clamp(t, 0.0, 1.0);
 
-                double pitch =
-                    (1.0 - t) * M_PI_2;
-
-                return pitch;
+                return (1.0 - t) * M_PI_2;
             }
 
-            // Phase 2: Circularization burn
+            // Phase 2: Circularization burn (pure prograde)
             if (periapsis < m_targetAltitude * 0.9)
-            {
-                // Pure horizontal burn
                 return 0.0;
-            }
 
-            // Orbit achieved → engine can idle
+            // Orbit achieved
             return 0.0;
         }
 

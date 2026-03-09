@@ -1,0 +1,182 @@
+[
+  {
+    "id": "falcon9",
+    "name": "Falcon 9 (Block 5)",
+    "manufacturer": "SpaceX",
+    "country": "USA",
+    "height": 70.0,
+    "diameter": 3.7,
+    "launchMass": 549054,
+    "payloadToLEO": 22800,
+    "costPerLaunch": 67,
+    "firstFlight": 2018,
+    "stages": [
+      {
+        "name": "First Stage (Merlin 1D x9)",
+        "dryMass": 22200,
+        "fuelMass": 395700,
+        "burnRate": 2770,
+        "exhaustVelocity": 2770,
+        "isp": 282,
+        "referenceArea": 10.75,
+        "dragCoefficient": 0.5
+      },
+      {
+        "name": "Second Stage (Merlin 1D Vacuum)",
+        "dryMass": 3900,
+        "fuelMass": 92670,
+        "burnRate": 287,
+        "exhaustVelocity": 3413,
+        "isp": 348,
+        "referenceArea": 10.75,
+        "dragCoefficient": 0.3
+      }
+    ]
+  },
+  {
+    "id": "saturnv",
+    "name": "Saturn V",
+    "manufacturer": "Boeing/North American/Douglas",
+    "country": "USA",
+    "height": 110.6,
+    "diameter": 10.1,
+    "launchMass": 2970000,
+    "payloadToLEO": 140000,
+    "costPerLaunch": 1160,
+    "firstFlight": 1967,
+    "stages": [
+      {
+        "name": "S-IC (F-1 x5)",
+        "dryMass": 130000,
+        "fuelMass": 2160000,
+        "burnRate": 12890,
+        "exhaustVelocity": 2580,
+        "isp": 263,
+        "referenceArea": 80.1,
+        "dragCoefficient": 0.5
+      },
+      {
+        "name": "S-II (J-2 x5)",
+        "dryMass": 36000,
+        "fuelMass": 444000,
+        "burnRate": 1179,
+        "exhaustVelocity": 4130,
+        "isp": 421,
+        "referenceArea": 80.1,
+        "dragCoefficient": 0.3
+      },
+      {
+        "name": "S-IVB (J-2 x1)",
+        "dryMass": 11500,
+        "fuelMass": 106000,
+        "burnRate": 246,
+        "exhaustVelocity": 4130,
+        "isp": 421,
+        "referenceArea": 25.0,
+        "dragCoefficient": 0.3
+      }
+    ]
+  },
+  {
+    "id": "electron",
+    "name": "Electron",
+    "manufacturer": "Rocket Lab",
+    "country": "New Zealand/USA",
+    "height": 18.0,
+    "diameter": 1.2,
+    "launchMass": 12550,
+    "payloadToLEO": 300,
+    "costPerLaunch": 7.5,
+    "firstFlight": 2017,
+    "stages": [
+      {
+        "name": "First Stage (Rutherford x9)",
+        "dryMass": 950,
+        "fuelMass": 9250,
+        "burnRate": 78,
+        "exhaustVelocity": 2530,
+        "isp": 258,
+        "referenceArea": 1.13,
+        "dragCoefficient": 0.5
+      },
+      {
+        "name": "Second Stage (Rutherford Vacuum)",
+        "dryMass": 250,
+        "fuelMass": 2050,
+        "burnRate": 10,
+        "exhaustVelocity": 3230,
+        "isp": 329,
+        "referenceArea": 1.13,
+        "dragCoefficient": 0.3
+      }
+    ]
+  },
+  {
+    "id": "ariane5",
+    "name": "Ariane 5 ECA",
+    "manufacturer": "Airbus/Safran",
+    "country": "Europe",
+    "height": 53.0,
+    "diameter": 5.4,
+    "launchMass": 777000,
+    "payloadToLEO": 21000,
+    "costPerLaunch": 178,
+    "firstFlight": 2002,
+    "stages": [
+      {
+        "name": "EPC Core (Vulcain 2)",
+        "dryMass": 14700,
+        "fuelMass": 170000,
+        "burnRate": 320,
+        "exhaustVelocity": 4220,
+        "isp": 431,
+        "referenceArea": 22.9,
+        "dragCoefficient": 0.5
+      },
+      {
+        "name": "ESC-A (HM7B)",
+        "dryMass": 4540,
+        "fuelMass": 14900,
+        "burnRate": 15,
+        "exhaustVelocity": 4364,
+        "isp": 445,
+        "referenceArea": 22.9,
+        "dragCoefficient": 0.3
+      }
+    ]
+  },
+  {
+    "id": "starship",
+    "name": "Starship + Super Heavy",
+    "manufacturer": "SpaceX",
+    "country": "USA",
+    "height": 121.0,
+    "diameter": 9.0,
+    "launchMass": 5000000,
+    "payloadToLEO": 150000,
+    "costPerLaunch": null,
+    "firstFlight": 2023,
+    "stages": [
+      {
+        "name": "Super Heavy (Raptor x33)",
+        "dryMass": 200000,
+        "fuelMass": 3400000,
+        "burnRate": 24750,
+        "exhaustVelocity": 3283,
+        "isp": 335,
+        "referenceArea": 63.6,
+        "dragCoefficient": 0.5
+      },
+      {
+        "name": "Starship (Raptor x6)",
+        "dryMass": 100000,
+        "fuelMass": 1200000,
+        "burnRate": 4500,
+        "exhaustVelocity": 3530,
+        "isp": 360,
+        "referenceArea": 63.6,
+        "dragCoefficient": 0.3
+      }
+    ]
+  }
+]

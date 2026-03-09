@@ -1,107 +1,79 @@
-# Titan Physics Engine – Architecture Overview
+# Titan Architecture Overview
 
 ## Overview
 
-Titan is a modular physics engine designed for aerospace simulation.
+Titan is a modular aerospace simulation platform with three main components:
 
-It follows a layered architecture focused on:
+1. **Physics Engine** (C++20) - high-fidelity simulation core
+2. **API** (ASP.NET Core 8) - REST + SignalR server with persistence
+3. **Frontend** (React + TypeScript) - Mission Control Console UI
 
-- Numerical stability
-- Clear physical modeling
-- Expandability toward 2D and 3D orbital mechanics
+## Architecture Diagram
 
----
+```
+┌──────────────────────────────────────────────────────────┐
+│                    FRONTEND (React)                       │
+│  TrajectoryViewer  │  Telemetry Panels  │  Charts  │ MCC │
+└────────────┬──────────────────────────┬──────────────────┘
+             │ REST (history, rockets)   │ SignalR (live telemetry)
+┌────────────▼──────────────────────────▼──────────────────┐
+│                    API (.NET 8)                            │
+│  Controllers  │  TelemetryHub  │  SimulationStore  │  EF  │
+└────────────┬─────────────────────────────────────────────┘
+             │ P/Invoke
+┌────────────▼─────────────────────────────────────────────┐
+│               PHYSICS ENGINE (C++20)                      │
+│  Gravity (J2)  │  Atmosphere  │  RK45  │  Guidance  │ 6DOF│
+└──────────────────────────────────────────────────────────┘
+```
 
-## 1. High-Level Structure
+## Layer Responsibilities
 
-Backend:
+### Physics Engine
 
-    Titan.PhysicsEngine
-        ├── core
-        ├── physics
-        ├── simulation
-        ├── integrators
-        └── orbital (future)
+- Newtonian gravity with J2 perturbation
+- Exponential and US Standard Atmosphere models
+- Euler, RK4, RK45 (Dormand-Prince) integrators
+- Orbital circularization and target apoapsis guidance
+- Multi-stage vehicles with automatic separation
+- 6DOF attitude dynamics with quaternions
+- Reaction wheel attitude control
+- Keplerian orbital element computation
+- Event bus and telemetry bus
+- C API exported for interop
 
-Frontend:
+### API
 
-    Separate project (visualization and telemetry)
+- Real-time telemetry streaming via SignalR WebSocket
+- REST endpoints for rocket catalog and simulation history
+- SQLite persistence via Entity Framework Core
+- Native interop (P/Invoke) to C++ engine
+- Time-warp pacing for real-time streaming
 
----
+### Frontend
 
-## 2. Core Layer
+- Mission Control Console layout (TrajectoryViewer + telemetry panels + charts)
+- Interactive SVG trajectory visualization with predicted orbits
+- KSP-style NavBall attitude indicator
+- Tabbed Recharts telemetry charts
+- Rocket builder for custom vehicle design
+- Simulation replay and comparison tools
 
-Contains:
+## Detailed Documentation
 
-- Vector structures
-- Physical constants
-- State definitions
+- [System Overview](architecture/system-overview.md) - communication flow, data model, deployment
+- [Physics Engine](architecture/physics-engine.md) - namespaces, design patterns, simulation loop
+- [API Layer](architecture/api-layer.md) - endpoints, SignalR protocol, database schema
+- [Frontend](architecture/frontend.md) - component tree, state management, data flow
 
-Purpose:
-- Mathematical foundation
+## Physics Documentation
 
----
-
-## 3. Physics Layer
-
-Contains:
-
-- Gravity models
-- Atmospheric model
-- Drag computation
-
-Purpose:
-- Encapsulate physical laws
-
----
-
-## 4. Simulation Layer
-
-Contains:
-
-- Rocket models
-- State evolution
-- Flight logic
-
-Purpose:
-- Connect physics + integrator
-
----
-
-## 5. Integrators
-
-Currently:
-
-- RK4 implemented
-
-Future:
-
-- RK45 adaptive
-- Symplectic integrators
-- Orbital propagators
-
----
-
-## 6. Design Philosophy
-
-- Clear separation of physics and integration
-- No hidden state mutation
-- Deterministic simulation
-- Engineering-oriented modeling
-
----
-
-## 7. Future Roadmap
-
-- 2D trajectory modeling
-- 3D orbital mechanics
-- Satellite propagation
-- Collision detection
-- REST telemetry API
-- Real-time visualization frontend
-
----
-
-## Conclusion
-
-The Titan Physics Engine is structured to evolve from a 1D rocket simulator into a full aerospace-grade simulation platform.
+- [Rocket Dynamics](physics/rocket-dynamics.md) - propulsion, mass variation, staging
+- [Gravity Models](physics/gravity-models.md) - inverse-square, J2 perturbation
+- [Atmospheric Model](physics/atmospheric-model.md) - exponential and US Standard 1976
+- [Integration Methods](physics/integration-methods.md) - Euler, RK4, RK45
+- [Orbital Mechanics](physics/orbital-mechanics.md) - Keplerian elements, orbit types
+- [Guidance Systems](physics/guidance-systems.md) - gravity turn, circularization
+- [Aerodynamics](physics/aerodynamics.md) - drag, dynamic pressure, Mach effects
+- [Mass Variation](physics/mass-variation.md) - Tsiolkovsky equation, mass budgets
+- [Attitude Dynamics](physics/attitude-dynamics.md) - quaternions, 6DOF, reaction wheels

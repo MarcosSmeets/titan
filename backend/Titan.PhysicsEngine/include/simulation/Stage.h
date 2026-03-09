@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include <cmath>
 
 namespace titan::simulation
 {
@@ -93,6 +94,33 @@ namespace titan::simulation
             return m_dragCoefficient;
         }
 
+        void SetInertia(double Ixx, double Iyy, double Izz)
+        {
+            m_Ixx = Ixx;
+            m_Iyy = Iyy;
+            m_Izz = Izz;
+        }
+
+        void GetInertia(double &Ixx, double &Iyy, double &Izz) const
+        {
+            if (m_Ixx > 0.0)
+            {
+                Ixx = m_Ixx;
+                Iyy = m_Iyy;
+                Izz = m_Izz;
+            }
+            else
+            {
+                // Cylinder approximation from total mass
+                double m = GetMass();
+                double r = std::sqrt(m_referenceArea / 3.14159265);
+                double h = 10.0 * r; // length ~10x radius
+                Ixx = m * (3.0 * r * r + h * h) / 12.0;
+                Iyy = Ixx;
+                Izz = m * r * r / 2.0;
+            }
+        }
+
     private:
         double m_dryMass;
         double m_fuelMass;
@@ -102,5 +130,9 @@ namespace titan::simulation
         double m_referenceArea;
         double m_dragCoefficient;
         double m_throttle;
+
+        double m_Ixx = 0.0;
+        double m_Iyy = 0.0;
+        double m_Izz = 0.0;
     };
 }

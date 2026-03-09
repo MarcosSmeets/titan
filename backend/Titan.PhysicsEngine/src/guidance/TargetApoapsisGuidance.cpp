@@ -1,6 +1,6 @@
 #include "guidance/TargetApoapsisGuidance.h"
 #include "orbital/OrbitalMechanics.h"
-#include "math/Vector2.h"
+#include "math/Vector3.h"
 #include <cmath>
 
 namespace titan::guidance
@@ -11,20 +11,16 @@ namespace titan::guidance
         double earthRadius)
         : m_targetApoapsis(targetApoapsis),
           m_earthRadius(earthRadius),
-          m_kp(5e-7) // Conservative proportional gain
+          m_kp(5e-7)
     {
     }
 
-    /*
-        Computes pitch angle using a proportional
-        closed-loop controller targeting apoapsis.
-    */
     double TargetApoapsisGuidance::ComputePitchAngle(
         const titan::integrators::State &state,
         double mu)
     {
-        titan::math::Vector2 r(state.x, state.y);
-        titan::math::Vector2 v(state.vx, state.vy);
+        titan::math::Vector3 r(state.x, state.y, state.z);
+        titan::math::Vector3 v(state.vx, state.vy, state.vz);
 
         auto elements =
             titan::orbital::OrbitalMechanics::ComputeOrbitalElements(
@@ -36,13 +32,10 @@ namespace titan::guidance
         double error =
             m_targetApoapsis - currentApoapsis;
 
-        // Start vertical
         double pitch = M_PI / 2.0;
 
-        // Proportional correction
         pitch -= m_kp * error;
 
-        // Clamp between horizontal and vertical
         if (pitch < 0.0)
             pitch = 0.0;
 

@@ -11,5 +11,11 @@ namespace titan::orbital
 
         double apoapsis;  // meters
         double periapsis; // meters
+
+        // 3D classical elements
+        double inclination;          // i (radians)
+        double raan;                 // Omega - Right Ascension of Ascending Node (radians)
+        double argumentOfPeriapsis;  // omega (radians)
+        double trueAnomaly;          // nu (radians)
     };
 }
