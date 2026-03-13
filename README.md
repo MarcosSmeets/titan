@@ -44,23 +44,55 @@ The Mission Control Console interface features:
 
 - **Trajectory Viewer** - interactive SVG with Earth, trajectory trail, predicted orbit, apo/periapsis markers
 - **Real-time telemetry panels** - flight data, orbital parameters, attitude
-- **NavBall** - KSP-style attitude indicator with roll/pitch/yaw
+- **NavBall** - KSP-style attitude indicator with roll/pitch/yaw and orbital markers
 - **Chart strip** - tabbed Recharts graphs (altitude, velocity, orbit, attitude, aero)
 - **Rocket Builder** - design custom multi-stage rockets
 - **Simulation History** - replay and compare past launches
 
+---
+
 ## Quick Start
 
-### Prerequisites
+### Option 1: Docker Compose (recommended)
+
+The easiest way to run the entire platform. Requires only **Docker** and **Docker Compose**.
+
+```bash
+docker compose up --build
+```
+
+This builds and starts all three services:
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| **Frontend** | http://localhost:3000 | React UI (nginx) |
+| **API** | http://localhost:5000 | .NET 8 API + SignalR |
+| **Physics Engine** | *(built into API)* | C++ shared library |
+
+Open http://localhost:3000 in your browser. Select a rocket, set a target orbit altitude, and launch.
+
+To stop:
+
+```bash
+docker compose down
+```
+
+To rebuild after code changes:
+
+```bash
+docker compose up --build
+```
+
+### Option 2: Run locally
+
+#### Prerequisites
 
 - C++20 compiler (GCC 10+, Clang 12+)
 - CMake 3.16+
 - .NET 8 SDK
 - Node.js 18+
 
-### Build & Run
-
-**1. Physics Engine (shared library)**
+#### 1. Physics Engine (shared library)
 
 ```bash
 cd backend/Titan.PhysicsEngine
@@ -69,15 +101,19 @@ cmake ..
 cmake --build .
 ```
 
-**2. API Server**
+This produces `libTitanPhysicsEngine.so` (Linux) or `.dylib` (macOS) in the `build/` directory.
+
+#### 2. API Server
+
+The API needs the C++ shared library on the library path:
 
 ```bash
 cd backend/Titan.API
-dotnet run
+LD_LIBRARY_PATH=../Titan.PhysicsEngine/build dotnet run
 # Runs on http://localhost:5000
 ```
 
-**3. Frontend**
+#### 3. Frontend
 
 ```bash
 cd frontend
@@ -86,7 +122,9 @@ npm run dev
 # Runs on http://localhost:5173
 ```
 
-Open http://localhost:5173 in your browser. Select a rocket, set a target orbit altitude, and launch.
+Open http://localhost:5173 in your browser. The Vite dev server proxies `/api` and `/hubs` to the API on port 5000.
+
+---
 
 ## How It Works
 
@@ -121,6 +159,7 @@ Open http://localhost:5173 in your browser. Select a rocket, set a target orbit 
 | API | ASP.NET Core 8, SignalR, EF Core, SQLite |
 | Frontend | React 18, TypeScript, Vite 5, Recharts |
 | Interop | P/Invoke (C# to native C++) |
+| Containers | Docker, Docker Compose |
 
 ## License
 

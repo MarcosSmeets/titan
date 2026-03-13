@@ -1,0 +1,12 @@
+**/.git
+**/node_modules
+**/dist
+**/build
+**/bin
+**/obj
+**/.vscode
+**/.idea
+**/*.db
+**/*.db-shm
+**/*.db-wal
+CLAUDE.md

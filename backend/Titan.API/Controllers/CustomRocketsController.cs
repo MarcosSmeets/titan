@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Titan.API.Data;
@@ -7,6 +8,7 @@ namespace Titan.API.Controllers;
 
 [ApiController]
 [Route("api/custom-rockets")]
+[Authorize]
 public class CustomRocketsController : ControllerBase
 {
     private readonly TitanDbContext _db;
@@ -74,6 +76,7 @@ public class CustomRocketsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "admin")]
     public async Task<ActionResult> Create([FromBody] CreateCustomRocketRequest request)
     {
         var id = Guid.NewGuid().ToString("N")[..8];
@@ -103,6 +106,7 @@ public class CustomRocketsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "admin")]
     public async Task<ActionResult> Delete(string id)
     {
         var rocket = await _db.CustomRockets

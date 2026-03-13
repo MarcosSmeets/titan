@@ -10,14 +10,23 @@ public class TitanDbContext : DbContext
     public DbSet<SimulationEventEntity> SimulationEvents => Set<SimulationEventEntity>();
     public DbSet<CustomRocketEntity> CustomRockets => Set<CustomRocketEntity>();
     public DbSet<CustomRocketStageEntity> CustomRocketStages => Set<CustomRocketStageEntity>();
+    public DbSet<UserEntity> Users => Set<UserEntity>();
 
     public TitanDbContext(DbContextOptions<TitanDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<UserEntity>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => x.Email).IsUnique();
+            e.HasIndex(x => x.Username).IsUnique();
+        });
+
         modelBuilder.Entity<SimulationEntity>(e =>
         {
             e.HasKey(x => x.Id);
+            e.HasIndex(x => x.UserId);
             e.HasMany(x => x.Telemetry).WithOne().HasForeignKey(x => x.SimulationId).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(x => x.Events).WithOne().HasForeignKey(x => x.SimulationId).OnDelete(DeleteBehavior.Cascade);
         });
@@ -37,6 +46,7 @@ public class TitanDbContext : DbContext
         modelBuilder.Entity<CustomRocketEntity>(e =>
         {
             e.HasKey(x => x.Id);
+            e.HasIndex(x => x.UserId);
             e.HasMany(x => x.Stages).WithOne().HasForeignKey(x => x.RocketId).OnDelete(DeleteBehavior.Cascade);
         });
 

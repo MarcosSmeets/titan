@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Titan.API.Models;
 using Titan.API.Native;
@@ -50,6 +51,7 @@ public class SimulationsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize]
     public ActionResult DeleteSimulation(string id)
     {
         if (!_store.Delete(id)) return NotFound();

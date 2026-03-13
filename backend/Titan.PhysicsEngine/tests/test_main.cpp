@@ -38,6 +38,9 @@
 #include "gnc/PointingMode.h"
 #include "guidance/OrbitalCircularizationGuidance.h"
 #include "export/DataExporter.h"
+#include "physics/CoriolisForce.h"
+#include "physics/ThrustForce.h"
+#include "environment/WindModel.h"
 
 using namespace titan;
 
@@ -1166,6 +1169,153 @@ void testEnhancedTelemetry()
 // ============================================================
 // Main
 // ============================================================
+// ============================================================
+// Coriolis Force Tests
+// ============================================================
+void testCoriolisForce()
+{
+    std::cout << "[CoriolisForce]\n";
+
+    // Stationary object: only centrifugal force
+    {
+        auto earth = environment::CelestialBody::Earth();
+        physics::CoriolisForce coriolis(earth);
+        simulation::SimState state;
+        state.position = math::Vector3(earth.radius, 0.0, 0.0);
+        state.velocity = math::Vector3(0.0, 0.0, 0.0);
+        state.mass = 100.0;
+        auto force = coriolis.ComputeForce(state, 0.0);
+        // centrifugal = m * omega^2 * R (outward along x)
+        double expected = state.mass * earth.rotationRate * earth.rotationRate * earth.radius;
+        ASSERT_NEAR(force.x, expected, expected * 0.01,
+            "Centrifugal force on stationary object");
+    }
+
+    // Moving object: Coriolis component
+    {
+        auto earth = environment::CelestialBody::Earth();
+        physics::CoriolisForce coriolis(earth);
+        simulation::SimState state;
+        state.position = math::Vector3(earth.radius, 0.0, 0.0);
+        state.velocity = math::Vector3(0.0, 1000.0, 0.0);
+        state.mass = 1.0;
+        auto force = coriolis.ComputeForce(state, 0.0);
+        ASSERT_TRUE(std::abs(force.x) > 0.01,
+            "Coriolis force has x-component for y-velocity");
+    }
+}
+
+// ============================================================
+// Wind Model Tests
+// ============================================================
+void testWindModel()
+{
+    std::cout << "[WindModel]\n";
+
+    // ConstantWind
+    {
+        math::Vector3 wind(10.0, 5.0, 0.0);
+        environment::ConstantWind cw(wind);
+        auto w1 = cw.GetWind(0.0, 0.0);
+        auto w2 = cw.GetWind(10000.0, 100.0);
+        ASSERT_NEAR(w1.x, 10.0, 1e-10, "Constant wind x at ground");
+        ASSERT_NEAR(w2.x, 10.0, 1e-10, "Constant wind x at altitude");
+        ASSERT_NEAR(w2.y, 5.0, 1e-10, "Constant wind y at altitude");
+    }
+
+    // WindShearProfile
+    {
+        math::Vector3 surface(0.0, 0.0, 0.0);
+        math::Vector3 jet(50.0, 0.0, 0.0);
+        environment::WindShearProfile wsp(surface, jet, 10000.0, 7000.0);
+
+        auto atGround = wsp.GetWind(0.0, 0.0);
+        ASSERT_NEAR(atGround.x, 0.0, 1e-10, "Surface wind is zero");
+
+        auto atJet = wsp.GetWind(10000.0, 0.0);
+        ASSERT_NEAR(atJet.x, 50.0, 1e-10, "Wind at jet stream altitude");
+
+        auto mid = wsp.GetWind(5000.0, 0.0);
+        ASSERT_NEAR(mid.x, 25.0, 1e-10, "Linear interpolation at midpoint");
+
+        auto above = wsp.GetWind(17000.0, 0.0);
+        ASSERT_TRUE(above.x < 50.0 && above.x > 0.0,
+            "Wind decays above jet stream");
+    }
+
+    // Drag with wind
+    {
+        auto earth = environment::CelestialBody::Earth();
+        environment::Atmosphere atm(earth.surfaceDensity, earth.atmosphereScaleHeight);
+
+        physics::AtmosphericDrag dragNoWind(10.0, 0.3, atm, earth.radius);
+        physics::AtmosphericDrag dragWithWind(10.0, 0.3, atm, earth.radius);
+
+        math::Vector3 tailwind(0.0, 500.0, 0.0);
+        environment::ConstantWind cw(tailwind);
+        dragWithWind.SetWindModel(&cw);
+
+        simulation::SimState state;
+        state.position = math::Vector3(earth.radius + 5000.0, 0.0, 0.0);
+        state.velocity = math::Vector3(0.0, 500.0, 0.0);
+        state.mass = 1000.0;
+
+        auto forceNoWind = dragNoWind.ComputeForce(state, 0.0);
+        auto forceWithWind = dragWithWind.ComputeForce(state, 0.0);
+
+        ASSERT_NEAR(forceWithWind.Magnitude(), 0.0, 1e-6,
+            "Zero drag when velocity equals wind");
+        ASSERT_TRUE(forceNoWind.Magnitude() > 100.0,
+            "Significant drag without wind at 500 m/s");
+    }
+}
+
+// ============================================================
+// Thrust Gimbal (TVC) Tests
+// ============================================================
+void testThrustGimbalTorque()
+{
+    std::cout << "[ThrustGimbalTorque]\n";
+
+    // Aligned thrust: no torque
+    {
+        physics::ThrustForce thrust(100000.0,
+            [](const simulation::SimState &s) {
+                return s.position.Normalized();
+            });
+        thrust.SetGimbalArm(2.0);
+
+        simulation::SimState state;
+        state.position = math::Vector3(6.371e6, 0.0, 0.0);
+        state.velocity = math::Vector3();
+        state.mass = 1000.0;
+
+        auto torque = thrust.ComputeTorque(state, 0.0);
+        ASSERT_NEAR(torque.Magnitude(), 0.0, 1e-6,
+            "No torque when thrust aligned with body axis");
+    }
+
+    // Deflected thrust: produces torque
+    {
+        physics::ThrustForce thrust(100000.0,
+            [](const simulation::SimState &) {
+                return math::Vector3(1.0, 0.1, 0.0).Normalized();
+            });
+        thrust.SetGimbalArm(2.0);
+
+        simulation::SimState state;
+        state.position = math::Vector3(6.371e6, 0.0, 0.0);
+        state.velocity = math::Vector3();
+        state.mass = 1000.0;
+
+        auto torque = thrust.ComputeTorque(state, 0.0);
+        ASSERT_TRUE(torque.Magnitude() > 1000.0,
+            "Significant torque from deflected thrust");
+        ASSERT_TRUE(std::abs(torque.z) > std::abs(torque.x),
+            "Torque primarily about z-axis");
+    }
+}
+
 int main()
 {
     std::cout << "=== Titan Physics Engine Test Suite ===\n\n";
@@ -1197,6 +1347,9 @@ int main()
     testStageInertia();
     testDataExport();
     testEnhancedTelemetry();
+    testCoriolisForce();
+    testWindModel();
+    testThrustGimbalTorque();
 
     std::cout << "\n=== Results ===\n";
     std::cout << "Passed: " << testsPassed << "\n";

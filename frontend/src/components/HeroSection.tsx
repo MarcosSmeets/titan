@@ -6,7 +6,7 @@ interface HeroSectionProps {
   rockets: RocketPreset[];
   onLaunch: (request: SimulationRequest) => void;
   onReplay: (telemetry: TelemetryPoint[], events: StageEvent[], rocketName: string, orbitAchieved: boolean, finalTime: number) => void;
-  onBuildCustom: () => void;
+  onBuildCustom?: () => void;
 }
 
 export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom }: HeroSectionProps) {
@@ -239,23 +239,25 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
           </div>
         )}
 
-        {/* Build custom rocket button */}
-        <button
-          onClick={onBuildCustom}
-          style={{
-            padding: '10px 24px',
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid #1a1a2e',
-            borderRadius: '8px',
-            color: '#667',
-            cursor: 'pointer',
-            fontSize: '12px',
-            letterSpacing: '1.5px',
-            transition: 'all 0.15s',
-          }}
-        >
-          BUILD CUSTOM ROCKET
-        </button>
+        {/* Build custom rocket button — only shown for admin users */}
+        {onBuildCustom && (
+          <button
+            onClick={onBuildCustom}
+            style={{
+              padding: '10px 24px',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid #1a1a2e',
+              borderRadius: '8px',
+              color: '#667',
+              cursor: 'pointer',
+              fontSize: '12px',
+              letterSpacing: '1.5px',
+              transition: 'all 0.15s',
+            }}
+          >
+            BUILD CUSTOM ROCKET
+          </button>
+        )}
 
         {/* Saved custom rockets */}
         {customRockets.length > 0 && (
