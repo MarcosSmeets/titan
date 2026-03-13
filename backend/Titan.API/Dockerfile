@@ -1,7 +1,7 @@
-# Stage 1: Build the C++ physics engine
-FROM gcc:13 AS cpp-builder
+# Stage 1: Build the C++ physics engine (same Debian base as runtime)
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS cpp-builder
 
-RUN apt-get update && apt-get install -y cmake && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y g++ cmake make && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /cpp
 COPY backend/Titan.PhysicsEngine/ .
@@ -20,8 +20,6 @@ RUN dotnet publish -c Release -o /app
 
 # Stage 3: Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
-
-RUN apt-get update && apt-get install -y libstdc++6 && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY --from=dotnet-builder /app .
