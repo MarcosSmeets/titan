@@ -190,6 +190,15 @@ public class TelemetryHub : Hub
         {
             // Client disconnected
         }
+        catch (Exception ex)
+        {
+            await Clients.Caller.SendAsync("OnSimulationComplete", new
+            {
+                orbitAchieved = false,
+                finalTime = 0.0,
+                error = $"Simulation error: {ex.Message}"
+            });
+        }
         finally
         {
             TitanInterop.titan_destroy(sim);

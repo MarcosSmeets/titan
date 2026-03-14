@@ -23,6 +23,16 @@ public struct TitanSimConfig
     public double Rk45Rtol;
     public double Rk45Hmin;
     public double Rk45Hmax;
+
+    // Completion criteria
+    public double CompletionMinPeriapsis;
+    public double CompletionMaxEccentricity;
+
+    // Physics options
+    public int UseJ2;
+    public int UseUSStandardAtmosphere;
+    public int UseEarthRotation;
+    public int UseMachCd;
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -34,6 +44,10 @@ public struct TitanStageConfig
     public double ExhaustVelocity;
     public double ReferenceArea;
     public double DragCoefficient;
+
+    // Altitude-dependent Isp (optional, set to 0 to disable)
+    public double IspSeaLevel;
+    public double IspVacuum;
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -53,6 +67,19 @@ public struct TitanTelemetry
     public double SemiMajorAxis;
     public int StageIndex;
     public int IsComplete;
+    public int Status; // 0 = running, 1 = completed, 2 = impact, 3 = error
+
+    // 6DOF attitude data
+    public double AttitudeW, AttitudeX, AttitudeY, AttitudeZ;
+    public double AngularVelocityX, AngularVelocityY, AngularVelocityZ;
+    public double DynamicPressure, MachNumber;
+
+    // Reaction wheel state
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
+    public double[] WheelSpeed;
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
+    public double[] WheelMomentum;
+    public int WheelCount;
 }
 
 public static class TitanInterop
