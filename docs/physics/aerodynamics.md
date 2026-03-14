@@ -2,7 +2,7 @@
 
 ## Overview
 
-Titan models atmospheric drag forces acting on the rocket during ascent. Drag is critical in the lower atmosphere and becomes negligible above ~100 km.
+Titan models atmospheric drag forces acting on the rocket during ascent. Drag is critical in the lower atmosphere and becomes negligible above ~100 km. The simulation also includes a MaxQ throttle bucket to limit structural loads during peak dynamic pressure.
 
 ## Drag Force
 
@@ -39,6 +39,34 @@ q = 0.5 * rho * v^2   (Pa)
 | Falcon 9 | ~30 kPa |
 | Saturn V | ~33 kPa |
 | Space Shuttle | ~35 kPa |
+
+### MaxQ Auto-Detection
+
+The simulation automatically detects when max-Q has passed by tracking peak dynamic pressure. When the current dynamic pressure drops to 95% of the recorded peak (and the peak exceeds 1 kPa), a `MaxQ` event is emitted:
+
+```cpp
+if (q < maxDynamicPressure * 0.95 && maxDynamicPressure > 1000.0) {
+    emit(EventType::MaxQ, "Maximum dynamic pressure");
+}
+```
+
+## MaxQ Throttle Bucket
+
+To limit structural loads during the max-Q region, the simulation automatically throttles thrust:
+
+```
+if altitude in [5 km, 20 km] AND q > 30 kPa:
+    throttle = min(throttle, 0.70)
+```
+
+This reduces thrust to 70% of nominal when dynamic pressure exceeds 30 kPa in the 5-20 km altitude band. The throttle-down:
+
+- Reduces aerodynamic loads on the vehicle structure
+- Mimics real launch profiles (e.g., Falcon 9 throttles to ~60-80% through max-Q)
+- Automatically releases as the rocket climbs into thinner atmosphere
+- Has minimal impact on total delta-v (the time spent in the bucket is short)
+
+The throttle bucket interacts with G-load limiting — the more restrictive limit takes precedence.
 
 ## Mach-Dependent Drag Coefficient
 

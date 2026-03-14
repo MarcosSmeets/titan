@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Titan frontend is a React 18 + TypeScript application built with Vite. It implements a Mission Control Console interface for real-time rocket simulation monitoring.
+The Titan frontend is a React 18 + TypeScript application built with Vite. It implements a Mission Control Console interface for real-time rocket simulation monitoring, with user authentication and simulation state management via React Context.
 
 ## Technology Stack
 
@@ -18,11 +18,15 @@ The Titan frontend is a React 18 + TypeScript application built with Vite. It im
 
 ```
 App
-├── Nav bar (page navigation, MET clock, status badge)
+├── AuthProvider (context: user, login, logout)
+├── SimulationProvider (context: telemetry, events, simState, launch/replay)
+├── Nav bar (page navigation, MET clock, status badge, auth controls)
+├── LoginPage (email/password form, JWT token storage)
+├── RegisterPage (registration with password validation)
 ├── HeroSection (launch page)
 │   ├── Rocket selection grid
 │   ├── LaunchConfig (target altitude, integrator, guidance)
-│   └── Custom rocket management
+│   └── Custom rocket management (auth required for create/delete)
 ├── SimulationPage (mission control console)
 │   ├── Header bar (TITAN MCC, rocket name, status, MET, buttons)
 │   ├── Main area (flex row)
@@ -41,20 +45,40 @@ App
 
 ## State Management
 
-Pure React state (useState + useRef). No external state library.
+### AuthContext
 
-### App-Level State
+Manages user authentication state across the application:
 
 ```typescript
-rockets: RocketPreset[]          // Preset catalog
-telemetry: TelemetryPoint[]      // Current simulation data
-simState: SimulationState        // idle|connecting|running|complete|failed
-events: StageEvent[]             // Stage separations
-rocketName: string               // Current rocket name
-orbitResult: {achieved, time}    // Orbit status
-page: AppPage                    // Current view
-lastRequest: SimulationRequest   // For re-launch/editing
+interface AuthContextType {
+  user: User | null;       // { username, email, role }
+  login: (user: User) => void;
+  logout: () => void;
+}
 ```
+
+On mount, reads the JWT from `localStorage`, parses claims (sub, email, username, role), and restores the user session. The context provides `user`, `login`, and `logout` to the component tree.
+
+### SimulationContext
+
+Manages simulation state, telemetry streaming, and replay:
+
+```typescript
+interface SimulationContextType {
+  telemetry: TelemetryPoint[];
+  simState: SimulationState;  // idle | connecting | running | complete | failed
+  events: StageEvent[];
+  rocketName: string;
+  orbitResult: { achieved: boolean; time: number } | null;
+  lastRequest: SimulationRequest | null;
+  isActive: boolean;
+  handleLaunch: (request: SimulationRequest) => Promise<void>;
+  handleReplay: (...) => void;
+  reset: () => void;
+}
+```
+
+Integrates with SignalR for streaming telemetry during live simulations and supports replay of saved simulations with full telemetry data.
 
 ### Performance: Ref-Based Batching
 
@@ -80,22 +104,37 @@ Heavy computations are memoized:
 
 ## Data Flow
 
+### Auth Flow
+
+```
+User → LoginPage → auth.login(email, password)
+  → POST /api/auth/login → { token, username, email, role }
+  → setToken(localStorage) → AuthContext.login(user)
+  → Redirect to Launch page
+
+User → RegisterPage → auth.register(email, username, password)
+  → POST /api/auth/register → { token, username, email, role }
+  → setToken(localStorage) → AuthContext.login(user)
+  → Redirect to Launch page
+```
+
 ### Launch Flow
 
 ```
 User → HeroSection → handleLaunch(request)
-    → SignalR: RunSimulation(request)
+    → SimulationContext → SignalR: RunSimulation(request)
     → Hub: OnSimulationStart → setSimState('running')
     → Hub: OnTelemetryUpdate (streaming) → append to telemetry[]
     → Hub: OnStageEvent → append to events[]
     → Hub: OnSimulationComplete → setSimState('complete')
+    → Hub: OnSimulationError → setSimState('failed')
 ```
 
 ### Replay Flow
 
 ```
 User → SimulationHistory → fetchSimulationById(id)
-    → handleReplay(telemetry, events, ...)
+    → SimulationContext.handleReplay(telemetry, events, ...)
     → setTelemetry(fullArray), setSimState('complete')
     → SimulationPage renders with complete data
 ```
@@ -151,6 +190,17 @@ Triggered by header buttons, rendered as fixed-position overlays:
 - **ADV**: Orbit advisor with tips and per-stage analysis
 
 ## Services Layer
+
+### Auth Service (`services/auth.ts`)
+
+```typescript
+login(email, password)              // POST /api/auth/login → AuthResponse
+register(email, username, password) // POST /api/auth/register → AuthResponse
+getToken()                          // Read JWT from localStorage
+setToken(token)                     // Store JWT in localStorage
+clearToken()                        // Remove JWT from localStorage
+parseToken(jwt)                     // Decode claims (sub, email, username, role)
+```
 
 ### API Service (`services/api.ts`)
 

@@ -2,32 +2,43 @@
 
 ## High-Level Architecture
 
-Titan is a three-tier aerospace simulation platform:
+Titan is a three-tier aerospace simulation platform with authentication:
 
 ```
 ┌──────────────────────────────────────────────────────────┐
 │                    FRONTEND (React)                       │
 │  Mission Control Console  │  Trajectory Viewer  │ Charts │
+│  LoginPage  │  RegisterPage  │  AuthContext              │
 └────────────┬──────────────────────────┬──────────────────┘
              │ REST API                  │ SignalR WebSocket
-             │ (history, rockets)        │ (real-time telemetry)
+             │ (history, rockets, auth)  │ (real-time telemetry)
+             │ + Authorization: Bearer   │ + ?access_token=
 ┌────────────▼──────────────────────────▼──────────────────┐
 │                    API (.NET 8)                            │
-│  Controllers  │  SignalR Hub  │  SimulationStore  │  EF   │
-└────────────┬─────────────────────────────────────────────┘
-             │ P/Invoke (native interop)
-┌────────────▼─────────────────────────────────────────────┐
-│               PHYSICS ENGINE (C++20)                      │
-│  Forces  │  Integrators  │  Guidance  │  Orbital  │  GNC │
-└──────────────────────────────────────────────────────────┘
-             │
-┌────────────▼─────────────────────────────────────────────┐
-│                    SQLITE DATABASE                         │
-│  Simulations  │  Telemetry  │  Events  │  Custom Rockets │
-└──────────────────────────────────────────────────────────┘
+│  AuthController │ Controllers │ SignalR Hub │ AuthService │
+└────────────┬──────────────────┬─────────────────────────┘
+             │ P/Invoke          │ EF Core
+┌────────────▼───────────┐ ┌────▼─────────────────────────┐
+│  PHYSICS ENGINE (C++20) │ │  DATABASE                     │
+│  Forces │ Integrators   │ │  PostgreSQL (Docker)          │
+│  Guidance │ GNC │ Events│ │  SQLite (local dev)           │
+└──────────────────────────┘ │  Users │ Sims │ Rockets      │
+                             └──────────────────────────────┘
 ```
 
 ## Communication Flow
+
+### Authentication Flow
+
+```
+1. User opens frontend → LoginPage or RegisterPage
+2. POST /api/auth/register → creates user (BCrypt hashed password)
+3. POST /api/auth/login → returns JWT token (24h expiry)
+4. Frontend stores token in localStorage
+5. AuthContext parses token claims and provides user state
+6. Protected requests include Authorization: Bearer <token>
+7. SignalR passes token via ?access_token query parameter
+```
 
 ### Real-Time Simulation (Primary Path)
 
@@ -38,15 +49,19 @@ Titan is a three-tier aerospace simulation platform:
 4. API Hub creates C++ simulation via P/Invoke:
    - titan_create_simulation(config)
    - titan_add_stage(sim, stage) x N
+   - titan_set_initial_attitude(sim, ...)
+   - titan_add_reaction_wheel(sim, ...) x N
 5. API Hub enters simulation loop:
    - titan_step(sim) → telemetry
    - Hub broadcasts OnTelemetryUpdate to client (~20 Hz)
    - Hub broadcasts OnStageEvent on stage separation
    - Delay based on TimeWarp for real-time pacing
 6. On completion:
-   - Hub saves to SQLite via SimulationStore
+   - Hub saves to database via SimulationStore
    - Hub broadcasts OnSimulationComplete
-7. Frontend updates TrajectoryViewer, panels, charts in real-time
+7. On error:
+   - Hub broadcasts OnSimulationError
+8. Frontend updates TrajectoryViewer, panels, charts in real-time
 ```
 
 ### Replay Path
@@ -97,6 +112,7 @@ Each simulation timestep produces a telemetry snapshot:
 - Typical simulation: 600-900s of flight time
 - Steps per simulation: ~12,000-18,000
 - Native execution: <1 second for full simulation
+- NaN/Inf detection halts simulation on numerical instability
 
 ### Telemetry Streaming
 
@@ -107,19 +123,30 @@ Each simulation timestep produces a telemetry snapshot:
 
 ### Database
 
-- SQLite file: titan.db
+- PostgreSQL 16 (Docker): connection via `DATABASE_URL`
+- SQLite (local dev): `titan.db`, auto-created
 - Auto-created on startup
 - Cascade delete for simulation → telemetry/events
 
-## Security & CORS
+## Security
 
-- CORS limited to `http://localhost:5173`
-- No authentication (local development tool)
-- Credentials enabled for SignalR WebSocket
+### Authentication
+
+- JWT tokens with 24-hour expiry
+- BCrypt password hashing with complexity requirements
+- Admin account seeded on startup (configurable via `ADMIN_PASSWORD`)
+- Token passed via `Authorization: Bearer` header (REST) or `?access_token` query (SignalR)
+
+### CORS
+
+- Configured via `CORS_ORIGINS` environment variable
+- Local default: `http://localhost:5173`
+- Docker: `http://localhost:3000,http://localhost:5173`
+- Credentials enabled for JWT and SignalR
 
 ## Deployment Topology
 
-Currently designed for local development:
+### Local Development
 
 ```
 localhost:5173  →  Vite Dev Server (React)
@@ -132,3 +159,17 @@ localhost:5000  →  ASP.NET Core API
 ```
 
 Vite proxies `/api/*` and `/hubs/*` to the API server.
+
+### Docker Compose
+
+```
+localhost:3000  →  nginx (serves React build)
+                    ↓ proxy
+localhost:5000  →  ASP.NET Core API (container)
+                    ↓ P/Invoke
+                   libTitanPhysicsEngine.so (built in container)
+                    ↓
+localhost:5432  →  PostgreSQL 16 (container)
+```
+
+Environment variables (`JWT_SECRET`, `POSTGRES_PASSWORD`, `ADMIN_PASSWORD`) are configured via `.env` file.

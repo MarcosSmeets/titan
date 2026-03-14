@@ -2,7 +2,7 @@
 
 ## Overview
 
-Titan solves ordinary differential equations (ODEs) governing rocket motion using numerical integrators. Three methods are available, offering different tradeoffs between accuracy, stability, and computational cost.
+Titan solves ordinary differential equations (ODEs) governing rocket motion using numerical integrators. Three methods are available, offering different tradeoffs between accuracy, stability, and computational cost. All integrators include NaN/Inf detection for numerical safety.
 
 ## The Problem
 
@@ -129,6 +129,29 @@ Safety factor = 0.9 (conservative to avoid oscillation).
 - More complex implementation
 - 7 function evaluations per step (vs 4 for RK4)
 - Step rejection wastes computation
+
+## NaN/Inf Detection
+
+All integrators (RK4 and RK45) include numerical safety checks. After each integration step, the resulting state is inspected for non-finite values:
+
+```cpp
+static bool HasNaNOrInf(const State &s) {
+    return !std::isfinite(s.x) || !std::isfinite(s.y) || !std::isfinite(s.z) ||
+           !std::isfinite(s.vx) || !std::isfinite(s.vy) || !std::isfinite(s.vz);
+}
+```
+
+If any component of the state (position or velocity) contains NaN or Inf:
+- The step is **rejected**
+- The **previous state** is returned unchanged
+- The simulation effectively halts at the last valid state
+
+This prevents numerical instability from silently propagating through the simulation. Common causes of NaN/Inf include:
+- Division by zero in gravity models (mitigated by the body radius guard)
+- Extremely small timesteps causing floating-point underflow
+- Divergent trajectories in edge cases
+
+The RK45 integrator additionally checks intermediate state vectors during the adaptive step size computation.
 
 ## Comparison
 
