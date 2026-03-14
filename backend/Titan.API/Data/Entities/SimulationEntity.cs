@@ -13,6 +13,7 @@ public class SimulationEntity
     public double FinalApoapsis { get; set; }
     public double FinalPeriapsis { get; set; }
     public double FinalEccentricity { get; set; }
+    public string? UserId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public List<SimulationTelemetryEntity> Telemetry { get; set; } = new();

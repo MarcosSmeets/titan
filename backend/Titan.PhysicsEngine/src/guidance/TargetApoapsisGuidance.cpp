@@ -11,7 +11,10 @@ namespace titan::guidance
         double earthRadius)
         : m_targetApoapsis(targetApoapsis),
           m_earthRadius(earthRadius),
-          m_kp(5e-7)
+          m_kp(5e-7),
+          m_kd(2e-4),
+          m_prevApoapsis(0.0),
+          m_hasPrevApoapsis(false)
     {
     }
 
@@ -32,17 +35,20 @@ namespace titan::guidance
         double error =
             m_targetApoapsis - currentApoapsis;
 
+        // Derivative term: rate of change of apoapsis
+        double dApoapsis = 0.0;
+        if (m_hasPrevApoapsis)
+            dApoapsis = currentApoapsis - m_prevApoapsis;
+
+        m_prevApoapsis = currentApoapsis;
+        m_hasPrevApoapsis = true;
+
+        // PD controller: pitch down as apoapsis approaches target,
+        // with damping to prevent overshoot
         double pitch = M_PI / 2.0;
+        pitch -= m_kp * error + m_kd * dApoapsis;
 
-        pitch -= m_kp * error;
-
-        if (pitch < 0.0)
-            pitch = 0.0;
-
-        if (pitch > M_PI / 2.0)
-            pitch = M_PI / 2.0;
-
-        return pitch;
+        return std::clamp(pitch, 0.0, M_PI / 2.0);
     }
 
 }

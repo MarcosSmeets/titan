@@ -2,6 +2,7 @@
 #include "physics/ForceModel.h"
 #include "environment/Atmosphere.h"
 #include "environment/CelestialBody.h"
+#include "environment/WindModel.h"
 #include <cmath>
 #include <functional>
 
@@ -21,7 +22,8 @@ namespace titan::physics
               m_baseCd(dragCoefficient),
               m_atmosphere(atmosphere),
               m_bodyRadius(bodyRadius),
-              m_cdFunction(nullptr) {}
+              m_cdFunction(nullptr),
+              m_windModel(nullptr) {}
 
         AtmosphericDrag(
             double referenceArea,
@@ -32,24 +34,35 @@ namespace titan::physics
               m_baseCd(0.0),
               m_atmosphere(atmosphere),
               m_bodyRadius(bodyRadius),
-              m_cdFunction(std::move(cdFunction)) {}
+              m_cdFunction(std::move(cdFunction)),
+              m_windModel(nullptr) {}
 
         void SetReferenceArea(double area) { m_referenceArea = area; }
         void SetDragCoefficient(double cd) { m_baseCd = cd; }
         void SetCdFunction(CdFunction fn) { m_cdFunction = std::move(fn); }
+        void SetWindModel(const titan::environment::WindModel *wind) { m_windModel = wind; }
 
         titan::math::Vector3 ComputeForce(
             const titan::simulation::SimState &state,
-            double /*time*/) const override
+            double time) const override
         {
             double altitude = state.position.Magnitude() - m_bodyRadius;
             if (altitude < 0.0)
                 altitude = 0.0;
 
             double density = m_atmosphere.GetDensity(altitude);
-            double speed = state.velocity.Magnitude();
 
-            if (speed < 1e-10 || density < 1e-30)
+            // Compute airspeed = velocity - wind
+            titan::math::Vector3 airVelocity = state.velocity;
+            if (m_windModel)
+            {
+                titan::math::Vector3 wind = m_windModel->GetWind(altitude, time);
+                airVelocity = state.velocity - wind;
+            }
+
+            double airspeed = airVelocity.Magnitude();
+
+            if (airspeed < 1e-10 || density < 1e-30)
                 return {};
 
             double cd = m_baseCd;
@@ -57,14 +70,14 @@ namespace titan::physics
             {
                 double temperature = m_atmosphere.GetTemperature(altitude);
                 double speedOfSound = std::sqrt(1.4 * 287.058 * temperature);
-                double mach = speed / speedOfSound;
+                double mach = airspeed / speedOfSound;
                 cd = m_cdFunction(mach);
             }
 
-            double dragMagnitude = 0.5 * density * speed * speed *
+            double dragMagnitude = 0.5 * density * airspeed * airspeed *
                                    cd * m_referenceArea;
 
-            return state.velocity.Normalized() * (-dragMagnitude);
+            return airVelocity.Normalized() * (-dragMagnitude);
         }
 
         static CdFunction DefaultMachCd(double subsonicCd)
@@ -94,5 +107,6 @@ namespace titan::physics
         titan::environment::Atmosphere m_atmosphere;
         double m_bodyRadius;
         CdFunction m_cdFunction;
+        const titan::environment::WindModel *m_windModel;
     };
 }

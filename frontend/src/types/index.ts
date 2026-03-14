@@ -74,6 +74,7 @@ export interface StagePreset {
 
 export interface SimulationRequest {
   rocketId?: string;
+  rocketName?: string;
   targetAltitude: number;
   maxG: number;
   dt: number;
@@ -149,4 +150,17 @@ export interface CustomRocketStage {
   dragCoefficient: number;
 }
 
-export type AppPage = 'launch' | 'simulation' | 'history' | 'how-it-works';
+export interface User {
+  username: string;
+  email: string;
+  role: 'admin' | 'user';
+}
+
+export interface AuthResponse {
+  token: string;
+  username: string;
+  email: string;
+  role: string;
+}
+
+export type AppPage = 'login' | 'register' | 'launch' | 'simulation' | 'history' | 'how-it-works';

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Titan.API.Models;
 using Titan.API.Native;
@@ -50,6 +51,7 @@ public class SimulationsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize]
     public ActionResult DeleteSimulation(string id)
     {
         if (!_store.Delete(id)) return NotFound();
@@ -63,9 +65,11 @@ public class SimulationsController : ControllerBase
         if (stages == null || stages.Count == 0)
             return BadRequest("No stages configured. Provide a rocketId or customStages.");
 
-        var rocketName = request.RocketId != null
-            ? RocketsController.FindPreset(request.RocketId)?.Name ?? request.RocketId
-            : "Custom Rocket";
+        var rocketName = !string.IsNullOrEmpty(request.RocketName)
+            ? request.RocketName
+            : request.RocketId != null
+                ? RocketsController.FindPreset(request.RocketId)?.Name ?? request.RocketId
+                : "Custom Rocket";
 
         var config = new TitanSimConfig
         {

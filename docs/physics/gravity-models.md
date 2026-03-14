@@ -37,14 +37,18 @@ Where mu = GM = 3.986004418 x 10^14 m^3/s^2
 
 ### Implementation
 
-The `PointMassGravity` class takes mu as constructor parameter:
+The `PointMassGravity` class takes mu and body radius as constructor parameters:
 
 ```cpp
 Vector3 ComputeForce(const SimState &state, double time) const {
     double r = state.position.Magnitude();
+    if (r < m_bodyRadius)  // Guard: prevent singularity below surface
+        return {};         // Returns zero force instead of NaN/Inf
     return state.position * (-m_mu * state.mass / (r * r * r));
 }
 ```
+
+The radius guard uses `r < m_bodyRadius` (the actual body radius, e.g., 6,371,000 m for Earth) rather than an arbitrary small value. This prevents division-by-zero and physically meaningless forces when the vehicle has impacted the surface. The same guard is applied in `J2Gravity` and `SolarRadiationPressure`.
 
 ### Variation with Altitude
 

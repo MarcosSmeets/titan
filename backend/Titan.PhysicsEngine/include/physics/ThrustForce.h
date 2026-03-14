@@ -41,6 +41,36 @@ namespace titan::physics
         void SetThrustMagnitude(double thrust) { m_thrustMagnitude = thrust; }
         void SetDirection(DirectionFunction fn) { m_directionFunc = std::move(fn); }
 
+        /// Enable gimbal-based thrust vector control.
+        /// @param gimbalArm Distance from CoM to nozzle pivot (m) — torque = thrust x arm
+        void SetGimbalArm(double arm) { m_gimbalArm = arm; }
+
+        titan::math::Vector3 ComputeTorque(
+            const titan::simulation::SimState &state,
+            double /*time*/) const override
+        {
+            if (m_thrustMagnitude <= 0.0 || m_gimbalArm <= 0.0)
+                return {};
+
+            titan::math::Vector3 direction = m_directionFunc(state);
+            double dirMag = direction.Magnitude();
+            if (dirMag < 1e-10)
+                return {};
+            direction = direction / dirMag;
+
+            // Vehicle body axis (nadir-pointing, approximate as -position)
+            auto bodyAxis = state.position.Normalized();
+
+            // Torque = gimbalArm * (bodyAxis x thrustDirection) * thrustMagnitude
+            // This produces torque proportional to the off-axis angle of thrust
+            auto cross = titan::math::Vector3::Cross(bodyAxis, direction);
+            double crossMag = cross.Magnitude();
+            if (crossMag < 1e-15)
+                return {};
+
+            return cross * (m_thrustMagnitude * m_gimbalArm);
+        }
+
         double GetEffectiveIsp(double altitude) const
         {
             if (!m_altitudeIspEnabled || !m_atmosphere)
@@ -94,5 +124,6 @@ namespace titan::physics
         const titan::environment::Atmosphere *m_atmosphere;
         double m_bodyRadius;
         bool m_altitudeIspEnabled;
+        double m_gimbalArm = 0.0;
     };
 }

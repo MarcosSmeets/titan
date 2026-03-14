@@ -1,0 +1,57 @@
+services:
+  # PostgreSQL database
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: titan
+      POSTGRES_USER: titan
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U titan -d titan"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  # C++ Physics Engine — shared library (build-only, artifact used by api)
+  physics-engine:
+    build:
+      context: ./backend/Titan.PhysicsEngine
+      dockerfile: Dockerfile
+    command: ["echo", "Physics engine built successfully"]
+
+  # .NET 8 API + SignalR + native C++ interop
+  api:
+    build:
+      context: .
+      dockerfile: backend/Titan.API/Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_URLS=http://+:5000
+      - ASPNETCORE_ENVIRONMENT=Production
+      - LD_LIBRARY_PATH=/app
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+      - DATABASE_URL=Host=postgres;Port=5432;Database=titan;Username=titan;Password=${POSTGRES_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in .env}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: on-failure
+
+  # React + TypeScript frontend served via nginx
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

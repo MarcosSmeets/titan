@@ -17,5 +17,8 @@ namespace titan::guidance
         double m_targetApoapsis;
         double m_earthRadius;
         double m_kp;
+        double m_kd;
+        double m_prevApoapsis;
+        bool m_hasPrevApoapsis;
     };
 }

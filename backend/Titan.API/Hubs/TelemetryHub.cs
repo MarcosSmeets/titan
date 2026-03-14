@@ -31,9 +31,11 @@ public class TelemetryHub : Hub
             return;
         }
 
-        var rocketName = request.RocketId != null
-            ? Controllers.RocketsController.FindPreset(request.RocketId)?.Name ?? request.RocketId
-            : "Custom Rocket";
+        var rocketName = !string.IsNullOrEmpty(request.RocketName)
+            ? request.RocketName
+            : request.RocketId != null
+                ? Controllers.RocketsController.FindPreset(request.RocketId)?.Name ?? request.RocketId
+                : "Custom Rocket";
 
         await Clients.Caller.SendAsync("OnSimulationStart", new
         {
@@ -189,6 +191,15 @@ public class TelemetryHub : Hub
         catch (OperationCanceledException)
         {
             // Client disconnected
+        }
+        catch (Exception ex)
+        {
+            await Clients.Caller.SendAsync("OnSimulationComplete", new
+            {
+                orbitAchieved = false,
+                finalTime = 0.0,
+                error = $"Simulation error: {ex.Message}"
+            });
         }
         finally
         {

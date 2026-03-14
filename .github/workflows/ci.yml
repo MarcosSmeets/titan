@@ -1,0 +1,122 @@
+name: Titan CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  physics:
+    name: Physics Engine (C++)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/Titan.PhysicsEngine
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y cmake g++
+
+      - name: Configure
+        run: mkdir -p build && cd build && cmake ..
+
+      - name: Build
+        run: cd build && cmake --build . --parallel
+
+      - name: Run tests
+        run: cd build && ./TitanTests
+
+  api:
+    name: API (.NET 8)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore Titan.API/Titan.API.csproj
+
+      - name: Build
+        run: dotnet build Titan.API/Titan.API.csproj --no-restore --configuration Release
+
+      - name: Test
+        run: |
+          if [ -d "Titan.API.Tests" ]; then
+            dotnet test Titan.API.Tests/Titan.API.Tests.csproj --no-restore --verbosity normal
+          else
+            echo "No test project found, skipping"
+          fi
+
+  frontend:
+    name: Frontend (React)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+  integration:
+    name: Docker Integration
+    runs-on: ubuntu-latest
+    needs: [physics, api, frontend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create .env for CI
+        run: |
+          echo "POSTGRES_PASSWORD=titan-ci-test" > .env
+          echo "JWT_SECRET=titan-ci-test-secret-key-minimum-32-chars" >> .env
+          echo "ADMIN_PASSWORD=CiAdmin!2024secure" >> .env
+
+      - name: Build containers
+        run: docker compose build
+
+      - name: Start services
+        run: docker compose up -d
+
+      - name: Wait for API health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:5000/swagger/index.html > /dev/null 2>&1; then
+              echo "API is healthy"
+              exit 0
+            fi
+            echo "Waiting for API... ($i/30)"
+            sleep 2
+          done
+          echo "API failed to start"
+          docker compose logs api
+          exit 1
+
+      - name: Verify frontend
+        run: curl -sf http://localhost:3000 > /dev/null
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v

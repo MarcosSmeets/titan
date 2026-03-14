@@ -106,6 +106,7 @@ namespace titan::simulation
         CompletionCriteria m_completionCriteria;
         double m_maxG;
         double m_maxDynamicPressure;
+        double m_maxQThrottleThreshold;
         bool m_maxQReported;
 
         // GNC
@@ -126,5 +127,6 @@ namespace titan::simulation
         titan::math::Vector3 m_controlTorque;
 
         static constexpr double g0 = 9.80665;
+        static constexpr double m_separationDeltaV = 2.0; // m/s separation impulse
     };
 }

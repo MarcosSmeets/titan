@@ -75,16 +75,31 @@ namespace titan::simulation
         {
             Stage &stage = m_stages.front();
 
+            double throttle = 1.0;
+
+            // MaxQ throttle bucket (active in 5-20 km altitude band)
+            if (altitude > 5000.0 && altitude < 20000.0)
+            {
+                double speed = std::sqrt(
+                    m_state.vx * m_state.vx +
+                    m_state.vy * m_state.vy +
+                    m_state.vz * m_state.vz);
+                double q = 0.5 * density * speed * speed;
+                if (q > 30000.0)
+                    throttle = std::min(throttle, 0.7);
+            }
+
             // Closed-loop acceleration limiting
-            double thrust = stage.GetThrust();
+            double thrust = throttle * stage.GetMaxThrust();
             double accel = thrust / totalMass;
 
             if (accel / g0 > m_maxG)
             {
                 double limitedThrust = m_maxG * g0 * totalMass;
-                stage.SetThrottle(limitedThrust / stage.GetMaxThrust());
+                throttle = std::min(throttle, limitedThrust / stage.GetMaxThrust());
             }
 
+            stage.SetThrottle(throttle);
             stage.Burn(dt);
             thrustMagnitude = stage.GetThrust();
         }
@@ -162,6 +177,17 @@ namespace titan::simulation
         {
             m_stages.erase(m_stages.begin());
             m_stageIndex++;
+
+            // Apply separation impulse (2 m/s along velocity vector)
+            titan::math::Vector3 vel(m_state.vx, m_state.vy, m_state.vz);
+            double speed = vel.Magnitude();
+            if (speed > 1.0)
+            {
+                titan::math::Vector3 vHat = vel.Normalized();
+                m_state.vx += vHat.x * 2.0;
+                m_state.vy += vHat.y * 2.0;
+                m_state.vz += vHat.z * 2.0;
+            }
         }
     }
 

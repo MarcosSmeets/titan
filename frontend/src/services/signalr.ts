@@ -1,12 +1,15 @@
 import * as signalR from '@microsoft/signalr';
 import type { TelemetryPoint, SimulationRequest, StageEvent } from '../types';
+import { getToken } from './auth';
 
 let connection: signalR.HubConnection | null = null;
 
 export function getConnection(): signalR.HubConnection {
   if (!connection) {
     connection = new signalR.HubConnectionBuilder()
-      .withUrl('/hubs/telemetry')
+      .withUrl('/hubs/telemetry', {
+        accessTokenFactory: () => getToken() ?? '',
+      })
       .withAutomaticReconnect()
       .configureLogging(signalR.LogLevel.Warning)
       .build();

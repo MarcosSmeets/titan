@@ -75,5 +75,8 @@ frontend/dist/
 .DS_Store
 Thumbs.db
 
+# Environment variables (secrets)
+.env
+
 # Claude Code
 CLAUDE.md

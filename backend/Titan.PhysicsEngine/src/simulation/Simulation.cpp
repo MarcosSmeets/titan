@@ -13,6 +13,7 @@ namespace titan::simulation
           m_guidance(std::move(guidance)),
           m_maxG(4.0),
           m_maxDynamicPressure(0.0),
+          m_maxQThrottleThreshold(30000.0),
           m_maxQReported(false)
     {
         m_state.position = titan::math::Vector3(body.radius + 1.0, 0.0, 0.0);
@@ -168,16 +169,39 @@ namespace titan::simulation
         // Acceleration limiting and thrust management
         if (m_vehicle && m_vehicle->HasFuel())
         {
-            double thrust = m_vehicle->GetThrust();
+            double throttle = 1.0;
+
+            // MaxQ throttle bucket: limit thrust during peak dynamic pressure
+            // Only active in the Max-Q altitude band (5-20 km) where
+            // dynamic pressure is highest
+            if (m_atmosphere)
+            {
+                double alt = m_state.position.Magnitude() - m_body.radius;
+                if (alt > 5000.0 && alt < 20000.0)
+                {
+                    double density = m_atmosphere->GetDensity(alt);
+                    double speed = m_state.velocity.Magnitude();
+                    double q = 0.5 * density * speed * speed;
+
+                    if (q > m_maxQThrottleThreshold)
+                        throttle = std::min(throttle, 0.7);
+                }
+            }
+
+            double maxThrust = m_vehicle->GetMaxThrust();
+
+            // G-load limiting
+            double thrust = throttle * maxThrust;
             double accel = thrust / totalMass;
 
             if (accel / g0 > m_maxG)
             {
                 double limitedThrust = m_maxG * g0 * totalMass;
-                double maxThrust = m_vehicle->GetMaxThrust();
-                if (maxThrust > 0.0)
-                    m_vehicle->SetThrottle(limitedThrust / maxThrust);
+                throttle = std::min(throttle, limitedThrust / maxThrust);
             }
+
+            if (maxThrust > 0.0)
+                m_vehicle->SetThrottle(throttle);
 
             m_vehicle->Burn(dt);
         }
@@ -381,10 +405,18 @@ namespace titan::simulation
 
         m_state.mass = m_vehicle ? m_vehicle->GetTotalMass() : m_state.mass;
 
-        // Stage separation
+        // Stage separation with impulse
         if (m_vehicle && m_vehicle->ShouldSeparateStage())
         {
             m_vehicle->SeparateStage(m_state.time, m_eventBus.get());
+
+            // Apply small separation delta-v (models separation motors/springs)
+            double speed = m_state.velocity.Magnitude();
+            if (speed > 1.0)
+            {
+                titan::math::Vector3 vHat = m_state.velocity.Normalized();
+                m_state.velocity += vHat * m_separationDeltaV;
+            }
         }
 
         // Max-Q detection
