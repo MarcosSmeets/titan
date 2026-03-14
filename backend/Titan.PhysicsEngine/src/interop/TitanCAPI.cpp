@@ -9,6 +9,7 @@
 #include "physics/PointMassGravity.h"
 #include "physics/J2Gravity.h"
 #include "physics/AtmosphericDrag.h"
+#include "physics/CoriolisForce.h"
 #include "integrators/RK4Integrator.h"
 #include "integrators/EulerIntegrator.h"
 #include "integrators/RK45Integrator.h"
@@ -149,6 +150,10 @@ extern "C"
             initState.velocity = titan::math::Vector3(0.0, surfaceVelocity, 0.0);
             initState.time = 0.0;
             sim->simulation->SetInitialState(initState);
+
+            // Add Coriolis and centrifugal pseudo-forces for rotating frame
+            sim->simulation->AddForce(
+                std::make_unique<titan::physics::CoriolisForce>(body));
         }
 
         return sim;

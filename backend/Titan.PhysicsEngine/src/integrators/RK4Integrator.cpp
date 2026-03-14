@@ -1,7 +1,14 @@
 #include "integrators/RK4Integrator.h"
+#include <cmath>
 
 namespace titan::integrators
 {
+    static bool HasNaNOrInf(const State &s)
+    {
+        return !std::isfinite(s.x) || !std::isfinite(s.y) || !std::isfinite(s.z) ||
+               !std::isfinite(s.vx) || !std::isfinite(s.vy) || !std::isfinite(s.vz);
+    }
+
     StepResult RK4Integrator::Step(
         const State &current,
         double dt,
@@ -65,6 +72,9 @@ namespace titan::integrators
             current.vz + (dt / 6.0) *
                              (k1.dvz + 2.0 * k2.dvz + 2.0 * k3.dvz + k4.dvz);
 
+        if (HasNaNOrInf(next))
+            return {current, dt};
+
         return {next, dt};
     }
 
@@ -97,7 +107,11 @@ namespace titan::integrators
 
         StateVector next(n);
         for (size_t i = 0; i < n; i++)
+        {
             next[i] = current[i] + (dt / 6.0) * (k1[i] + 2.0 * k2[i] + 2.0 * k3[i] + k4[i]);
+            if (!std::isfinite(next[i]))
+                return {current, dt};
+        }
 
         return {next, dt};
     }

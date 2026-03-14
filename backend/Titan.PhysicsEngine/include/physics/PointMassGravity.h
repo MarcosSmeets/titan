@@ -7,18 +7,18 @@ namespace titan::physics
     class PointMassGravity : public ForceModel
     {
     public:
-        explicit PointMassGravity(double mu)
-            : m_mu(mu) {}
+        explicit PointMassGravity(double mu, double bodyRadius = 6371000.0)
+            : m_mu(mu), m_bodyRadius(bodyRadius) {}
 
         explicit PointMassGravity(const titan::environment::CelestialBody &body)
-            : m_mu(body.mu) {}
+            : m_mu(body.mu), m_bodyRadius(body.radius) {}
 
         titan::math::Vector3 ComputeForce(
             const titan::simulation::SimState &state,
             double /*time*/) const override
         {
             double r = state.position.Magnitude();
-            if (r < 1.0)
+            if (r < m_bodyRadius)
                 return {};
 
             double factor = -m_mu * state.mass / (r * r * r);
@@ -27,5 +27,6 @@ namespace titan::physics
 
     private:
         double m_mu;
+        double m_bodyRadius;
     };
 }

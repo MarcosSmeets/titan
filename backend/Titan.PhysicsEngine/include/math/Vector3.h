@@ -26,7 +26,7 @@ namespace titan::math
         Vector3 Normalized() const
         {
             double mag = Magnitude();
-            if (mag == 0.0)
+            if (mag < 1e-10)
                 return Vector3();
 
             return Vector3(x / mag, y / mag, z / mag);
@@ -67,6 +67,8 @@ namespace titan::math
 
         Vector3 operator/(double scalar) const
         {
+            if (std::abs(scalar) < 1e-15)
+                return Vector3();
             return Vector3(x / scalar, y / scalar, z / scalar);
         }
 
@@ -96,6 +98,13 @@ namespace titan::math
 
         Vector3 &operator/=(double scalar)
         {
+            if (std::abs(scalar) < 1e-15)
+            {
+                x = 0.0;
+                y = 0.0;
+                z = 0.0;
+                return *this;
+            }
             x /= scalar;
             y /= scalar;
             z /= scalar;

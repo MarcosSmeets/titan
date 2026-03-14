@@ -37,6 +37,7 @@
 #include "gnc/PIDController.h"
 #include "gnc/PointingMode.h"
 #include "guidance/OrbitalCircularizationGuidance.h"
+#include "guidance/TargetApoapsisGuidance.h"
 #include "export/DataExporter.h"
 #include "physics/CoriolisForce.h"
 #include "physics/ThrustForce.h"
@@ -1316,6 +1317,256 @@ void testThrustGimbalTorque()
     }
 }
 
+// ============================================================
+// Gravity Radius Check Tests (Phase 1.1)
+// ============================================================
+void testGravityRadiusCheck()
+{
+    std::cout << "[GravityRadiusCheck]\n";
+
+    auto earth = environment::CelestialBody::Earth();
+
+    // PointMassGravity should return zero inside Earth
+    physics::PointMassGravity pmg(earth);
+    simulation::SimState stateInside;
+    stateInside.position = math::Vector3(earth.radius * 0.5, 0.0, 0.0);
+    stateInside.mass = 1000.0;
+    auto forceInside = pmg.ComputeForce(stateInside, 0.0);
+    ASSERT_NEAR(forceInside.Magnitude(), 0.0, 1e-10,
+                "PointMassGravity zero inside Earth");
+
+    // Should return nonzero just above surface
+    simulation::SimState stateSurface;
+    stateSurface.position = math::Vector3(earth.radius + 100.0, 0.0, 0.0);
+    stateSurface.mass = 1000.0;
+    auto forceSurface = pmg.ComputeForce(stateSurface, 0.0);
+    ASSERT_TRUE(forceSurface.Magnitude() > 0.0,
+                "PointMassGravity nonzero above surface");
+
+    // J2Gravity should also return zero inside Earth
+    physics::J2Gravity j2(earth);
+    auto j2Inside = j2.ComputeForce(stateInside, 0.0);
+    ASSERT_NEAR(j2Inside.Magnitude(), 0.0, 1e-10,
+                "J2Gravity zero inside Earth");
+
+    auto j2Surface = j2.ComputeForce(stateSurface, 0.0);
+    ASSERT_TRUE(j2Surface.Magnitude() > 0.0,
+                "J2Gravity nonzero above surface");
+}
+
+// ============================================================
+// Vector Division-by-Zero Guard Tests (Phase 1.2)
+// ============================================================
+void testVectorDivisionGuards()
+{
+    std::cout << "[VectorDivisionGuards]\n";
+
+    // Vector3 normalization of near-zero vector
+    math::Vector3 tiny(1e-15, 1e-15, 1e-15);
+    auto normalized = tiny.Normalized();
+    ASSERT_NEAR(normalized.Magnitude(), 0.0, 1e-10,
+                "Near-zero Vector3 normalizes to zero");
+
+    // Vector3 division by zero
+    math::Vector3 v(1.0, 2.0, 3.0);
+    auto divided = v / 0.0;
+    ASSERT_NEAR(divided.Magnitude(), 0.0, 1e-10,
+                "Vector3 / 0.0 returns zero");
+
+    // Vector2 normalization of near-zero
+    math::Vector2 tiny2(1e-15, 1e-15);
+    auto norm2 = tiny2.Normalized();
+    ASSERT_NEAR(norm2.Magnitude(), 0.0, 1e-10,
+                "Near-zero Vector2 normalizes to zero");
+
+    // Vector2 division by zero
+    math::Vector2 v2(1.0, 2.0);
+    auto div2 = v2 / 0.0;
+    ASSERT_NEAR(div2.Magnitude(), 0.0, 1e-10,
+                "Vector2 / 0.0 returns zero");
+
+    // Compound division by zero
+    math::Vector3 v3(5.0, 6.0, 7.0);
+    v3 /= 0.0;
+    ASSERT_NEAR(v3.Magnitude(), 0.0, 1e-10,
+                "Vector3 /= 0.0 zeros out");
+}
+
+// ============================================================
+// NaN Detection in Integrators (Phase 1.3)
+// ============================================================
+void testNaNDetection()
+{
+    std::cout << "[NaNDetection]\n";
+
+    integrators::RK4Integrator rk4;
+
+    // Derivative function that produces NaN
+    auto nanDeriv = [](const integrators::State &s) -> integrators::Derivative {
+        return {s.vx, s.vy, s.vz,
+                0.0 / 0.0,  // NaN
+                0.0, 0.0};
+    };
+
+    integrators::State initial{6371001.0, 0.0, 0.0, 0.0, 7800.0, 0.0};
+    auto result = rk4.Step(initial, 1.0, nanDeriv);
+
+    // Should return original state when NaN detected
+    ASSERT_NEAR(result.state.x, initial.x, 1e-6,
+                "RK4 returns original state on NaN");
+
+    // Test vector variant too
+    integrators::StateVector initVec = {6371001.0, 0.0, 0.0, 0.0, 7800.0, 0.0};
+    auto nanVecDeriv = [](const integrators::StateVector &s) -> integrators::DerivativeVector {
+        return {s[3], s[4], s[5], 0.0 / 0.0, 0.0, 0.0};
+    };
+    auto vecResult = rk4.StepVector(initVec, 1.0, nanVecDeriv);
+    ASSERT_NEAR(vecResult.state[0], initVec[0], 1e-6,
+                "RK4 vector returns original state on NaN");
+}
+
+// ============================================================
+// Gravity Turn Guidance Tests (Phase 2.1)
+// ============================================================
+void testGravityTurnGuidance()
+{
+    std::cout << "[GravityTurnGuidance]\n";
+
+    double earthRadius = 6371000.0;
+    double targetAlt = 200000.0;
+
+    guidance::OrbitalCircularizationGuidance guidance(targetAlt, earthRadius);
+
+    // On the pad (altitude < 500m): should be vertical (pi/2)
+    integrators::State padState{earthRadius + 100.0, 0.0, 0.0, 0.0, 100.0, 0.0};
+    double padPitch = guidance.ComputePitchAngle(padState, 3.986e14);
+    ASSERT_NEAR(padPitch, M_PI_2, 0.01, "Vertical at pad");
+
+    // At moderate altitude with significant horizontal velocity:
+    // should follow velocity vector (pitch < 90)
+    integrators::State flyState{earthRadius + 30000.0, 0.0, 0.0, 500.0, 1500.0, 0.0};
+    double flyPitch = guidance.ComputePitchAngle(flyState, 3.986e14);
+    ASSERT_TRUE(flyPitch < M_PI_2, "Pitch over during gravity turn");
+    ASSERT_TRUE(flyPitch >= 0.0, "Pitch non-negative");
+}
+
+// ============================================================
+// MaxQ Auto-Detection Tests (Phase 4.2)
+// ============================================================
+void testMaxQDetection()
+{
+    std::cout << "[MaxQDetection]\n";
+
+    auto body = environment::CelestialBody::Earth();
+    auto integrator = std::make_unique<integrators::RK4Integrator>();
+    auto guidance = std::make_unique<guidance::OrbitalCircularizationGuidance>(
+        200000.0, body.radius);
+
+    simulation::Simulation sim(body, std::move(integrator), std::move(guidance));
+    sim.SetAtmosphere(std::make_unique<environment::USStandardAtmosphere>());
+    sim.AddForce(std::make_unique<physics::PointMassGravity>(body));
+
+    auto eventBus = std::make_shared<events::EventBus>();
+    sim.SetEventBus(eventBus);
+
+    // Use a powerful rocket that will fly through the max-Q altitude band
+    auto vehicle = std::make_unique<vehicle::Vehicle>();
+    vehicle->AddStage(simulation::Stage(
+        10000.0, 120000.0, 1500.0, 2800.0, 10.0, 0.3));
+    sim.SetVehicle(std::move(vehicle));
+    sim.SetMaxG(6.0);
+
+    // Run simulation long enough to pass through max-Q region
+    bool maxQDetected = false;
+    for (int i = 0; i < 6000; i++)
+    {
+        auto result = sim.Step(0.1);
+        if (result.status != simulation::SimStatus::Running)
+            break;
+
+        const auto &log = eventBus->GetEventLog();
+        for (const auto &evt : log)
+        {
+            if (evt.type == events::EventType::MaxQ)
+                maxQDetected = true;
+        }
+        eventBus->ClearLog();
+    }
+
+    ASSERT_TRUE(maxQDetected, "MaxQ event auto-detected during ascent");
+}
+
+// ============================================================
+// Stage Separation Impulse Tests (Phase 4.3)
+// ============================================================
+void testStageSeparationImpulse()
+{
+    std::cout << "[StageSeparationImpulse]\n";
+
+    auto body = environment::CelestialBody::Earth();
+    auto integrator = std::make_unique<integrators::RK4Integrator>();
+    auto guidance = std::make_unique<guidance::OrbitalCircularizationGuidance>(
+        200000.0, body.radius);
+
+    simulation::Simulation sim(body, std::move(integrator), std::move(guidance));
+    sim.SetAtmosphere(std::make_unique<environment::USStandardAtmosphere>());
+    sim.AddForce(std::make_unique<physics::PointMassGravity>(body));
+
+    auto eventBus = std::make_shared<events::EventBus>();
+    sim.SetEventBus(eventBus);
+
+    // Create vehicle with two stages; first stage has very little fuel
+    auto vehicle = std::make_unique<vehicle::Vehicle>();
+    vehicle->AddStage(simulation::Stage(
+        1000.0, 50.0, 300.0, 3000.0, 10.0, 0.3));  // tiny fuel, will deplete fast
+    vehicle->AddStage(simulation::Stage(
+        1000.0, 50000.0, 200.0, 3000.0, 10.0, 0.3));
+    sim.SetVehicle(std::move(vehicle));
+
+    bool separated = false;
+    for (int i = 0; i < 500; i++)
+    {
+        auto result = sim.Step(0.1);
+        if (result.status != simulation::SimStatus::Running)
+            break;
+
+        const auto &log = eventBus->GetEventLog();
+        for (const auto &evt : log)
+        {
+            if (evt.type == events::EventType::StageSeparation)
+                separated = true;
+        }
+        eventBus->ClearLog();
+    }
+
+    ASSERT_TRUE(separated, "Stage separation occurred");
+}
+
+// ============================================================
+// Earth Rotation Initial Velocity Tests (Phase 4.1)
+// ============================================================
+void testEarthRotationInitialVelocity()
+{
+    std::cout << "[EarthRotationInitialVelocity]\n";
+
+    auto body = environment::CelestialBody::Earth();
+
+    // Earth surface velocity at equator: omega * R ≈ 465 m/s
+    double expectedV = body.rotationRate * body.radius;
+    ASSERT_NEAR(expectedV, 465.1, 1.0, "Earth equatorial surface velocity ~465 m/s");
+
+    // Verify CoriolisForce computes nonzero for moving body on rotating Earth
+    physics::CoriolisForce coriolis(body);
+    simulation::SimState state;
+    state.position = math::Vector3(body.radius + 1000.0, 0.0, 0.0);
+    state.velocity = math::Vector3(0.0, 7800.0, 0.0);
+    state.mass = 1000.0;
+
+    auto force = coriolis.ComputeForce(state, 0.0);
+    ASSERT_TRUE(force.Magnitude() > 0.0,
+                "Coriolis force nonzero for moving body");
+}
+
 int main()
 {
     std::cout << "=== Titan Physics Engine Test Suite ===\n\n";
@@ -1350,6 +1601,13 @@ int main()
     testCoriolisForce();
     testWindModel();
     testThrustGimbalTorque();
+    testGravityRadiusCheck();
+    testVectorDivisionGuards();
+    testNaNDetection();
+    testGravityTurnGuidance();
+    testMaxQDetection();
+    testStageSeparationImpulse();
+    testEarthRotationInitialVelocity();
 
     std::cout << "\n=== Results ===\n";
     std::cout << "Passed: " << testsPassed << "\n";

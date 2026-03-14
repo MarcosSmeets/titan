@@ -18,7 +18,7 @@ namespace titan::physics
             double /*time*/) const override
         {
             double r = state.position.Magnitude();
-            if (r < 1.0)
+            if (r < m_bodyRadius)
                 return {};
 
             double x = state.position.x;

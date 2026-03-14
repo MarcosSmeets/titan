@@ -2,6 +2,23 @@
 #include <cmath>
 #include <algorithm>
 
+namespace
+{
+    bool StateHasNaNOrInf(const titan::integrators::State &s)
+    {
+        return !std::isfinite(s.x) || !std::isfinite(s.y) || !std::isfinite(s.z) ||
+               !std::isfinite(s.vx) || !std::isfinite(s.vy) || !std::isfinite(s.vz);
+    }
+
+    bool VectorHasNaNOrInf(const titan::integrators::StateVector &sv)
+    {
+        for (auto v : sv)
+            if (!std::isfinite(v))
+                return true;
+        return false;
+    }
+}
+
 namespace titan::integrators
 {
 
@@ -124,6 +141,12 @@ namespace titan::integrators
 
             if (err <= 1.0)
             {
+                if (StateHasNaNOrInf(y5))
+                {
+                    m_h_current = h;
+                    return {current, dt};
+                }
+
                 state = y5;
                 t_remaining -= h;
 
@@ -216,6 +239,12 @@ namespace titan::integrators
 
             if (err <= 1.0)
             {
+                if (VectorHasNaNOrInf(y5))
+                {
+                    m_h_current = h;
+                    return {current, dt};
+                }
+
                 state = y5;
                 t_remaining -= h;
 
