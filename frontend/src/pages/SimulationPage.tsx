@@ -1,10 +1,12 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 import TrajectoryViewer from '../components/TrajectoryViewer';
 import NavBall from '../components/NavBall';
+
+const Viewer3D = lazy(() => import('../components/Viewer3D'));
 import MissionEventTimeline from '../components/MissionEventTimeline';
 import { useSimulationContext } from '../context/SimulationContext';
 import { useNavigate } from 'react-router-dom';
@@ -384,6 +386,7 @@ export default function SimulationPageComponent() {
   const [comparisons, setComparisons] = useState<{ id: string; name: string; telemetry: TelemetryPoint[]; color: string }[]>([]);
   const [loadingComp, setLoadingComp] = useState<string | null>(null);
   const [selectedChart, setSelectedChart] = useState<'altitude' | 'velocity' | 'orbit' | 'attitude' | 'aero'>('altitude');
+  const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
 
   useEffect(() => {
     if (lastRequest) {
@@ -557,7 +560,19 @@ export default function SimulationPageComponent() {
               <DataField label="STAGE" value={`${(latest.stageIndex ?? 0) + 1}`} color="#ffaa00" mono />
             </>
           )}
-          <div style={{ display: 'flex', gap: '6px', marginLeft: '8px' }}>
+          <div style={{ display: 'flex', gap: '4px', marginLeft: '8px', marginRight: '8px' }}>
+            {(['2d', '3d'] as const).map(mode => (
+              <button key={mode} onClick={() => setViewMode(mode)} style={{
+                ...mccHeaderBtnStyle,
+                color: viewMode === mode ? '#ffaa00' : '#4488ff',
+                borderColor: viewMode === mode ? '#ffaa0040' : '#4488ff30',
+                background: viewMode === mode ? 'rgba(255,170,0,0.08)' : 'transparent',
+              }}>
+                {mode.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: '6px' }}>
             {simState === 'complete' && (
               <>
                 <button onClick={handleExportCSV} style={{ ...mccHeaderBtnStyle, color: '#44cc88', borderColor: '#44cc8840' }}>CSV</button>
@@ -579,13 +594,27 @@ export default function SimulationPageComponent() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
         <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
           <div style={{ flex: '0 0 75%', minHeight: 0, position: 'relative' }}>
-            <TrajectoryViewer
-              telemetry={telemetry}
-              targetAltitude={lastRequest?.targetAltitude}
-              stageEvents={stageMarkers}
-              isLive={isActive}
-              orbitClassification={orbitClassification}
-            />
+            {viewMode === '2d' ? (
+              <TrajectoryViewer
+                telemetry={telemetry}
+                targetAltitude={lastRequest?.targetAltitude}
+                stageEvents={stageMarkers}
+                isLive={isActive}
+                orbitClassification={orbitClassification}
+              />
+            ) : (
+              <Suspense fallback={
+                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#556', fontSize: '12px', letterSpacing: '2px' }}>
+                  LOADING 3D VIEWER...
+                </div>
+              }>
+                <Viewer3D
+                  telemetry={telemetry}
+                  targetAltitude={lastRequest?.targetAltitude ?? 200000}
+                  isLive={isActive}
+                />
+              </Suspense>
+            )}
           </div>
           <div style={{ flex: '0 0 25%', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderLeft: '1px solid #151520' }}>
             <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>

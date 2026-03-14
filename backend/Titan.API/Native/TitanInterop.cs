@@ -100,4 +100,16 @@ public static class TitanInterop
 
     [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
     public static extern void titan_destroy(IntPtr sim);
+
+    [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void titan_set_initial_attitude(IntPtr sim,
+        double w, double x, double y, double z);
+
+    [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void titan_add_reaction_wheel(IntPtr sim,
+        double ax, double ay, double az,
+        double maxTorque, double maxMomentum, double wheelInertia);
+
+    [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void titan_set_pointing_mode(IntPtr sim, int mode);
 }

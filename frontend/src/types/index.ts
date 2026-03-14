@@ -83,6 +83,8 @@ export interface SimulationRequest {
   guidanceType: number;
   timeWarp: number;
   customStages?: StageRequest[];
+  pointingMode?: number; // 0=none, 1=inertial, 2=nadir, 3=sun
+  enable6DOF?: boolean;
 }
 
 export interface StageRequest {

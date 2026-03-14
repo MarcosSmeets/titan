@@ -12,6 +12,8 @@ public class SimulationRequest
     public int GuidanceType { get; set; } = 0;
     public double TimeWarp { get; set; } = 50.0; // Simulation seconds per real second
     public List<StageRequest>? CustomStages { get; set; }
+    public int? PointingMode { get; set; } // null=default nadir, 0=none, 1=inertial, 2=nadir, 3=sun
+    public bool Enable6DOF { get; set; } = true;
 }
 
 public class StageRequest
@@ -47,7 +49,28 @@ public class TelemetryPoint
     public double X { get; set; }
     public double Y { get; set; }
     public double Z { get; set; }
+    public double Vx { get; set; }
+    public double Vy { get; set; }
+    public double Vz { get; set; }
     public int StageIndex { get; set; }
+
+    // 6DOF attitude
+    public double AttitudeW { get; set; } = 1.0;
+    public double AttitudeX { get; set; }
+    public double AttitudeY { get; set; }
+    public double AttitudeZ { get; set; }
+    public double AngularVelocityX { get; set; }
+    public double AngularVelocityY { get; set; }
+    public double AngularVelocityZ { get; set; }
+
+    // Aerodynamics
+    public double DynamicPressure { get; set; }
+    public double MachNumber { get; set; }
+
+    // Reaction wheels
+    public double[]? WheelSpeed { get; set; }
+    public double[]? WheelMomentum { get; set; }
+    public int WheelCount { get; set; }
 }
 
 public class CompareRequest

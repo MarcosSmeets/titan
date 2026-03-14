@@ -79,6 +79,16 @@ public class TelemetryHub : Hub
                 });
             }
 
+            // 6DOF setup
+            if (request.Enable6DOF)
+            {
+                int pointingMode = request.PointingMode ?? 2; // default nadir
+                TitanInterop.titan_set_pointing_mode(sim, pointingMode);
+                TitanInterop.titan_add_reaction_wheel(sim, 1, 0, 0, 1.0, 50.0, 0.05);
+                TitanInterop.titan_add_reaction_wheel(sim, 0, 1, 0, 1.0, 50.0, 0.05);
+                TitanInterop.titan_add_reaction_wheel(sim, 0, 0, 1, 1.0, 50.0, 0.05);
+            }
+
             int totalSteps = (int)(request.Duration / request.Dt);
             double timeWarp = Math.Max(1.0, request.TimeWarp);
 
@@ -118,22 +128,7 @@ public class TelemetryHub : Hub
 
                 if (i % stepsPerPush == 0)
                 {
-                    var point = new TelemetryPoint
-                    {
-                        Time = lastTel.Time,
-                        Altitude = lastTel.Altitude,
-                        Velocity = lastTel.Velocity,
-                        Apoapsis = lastTel.Apoapsis,
-                        Periapsis = lastTel.Periapsis,
-                        Eccentricity = lastTel.Eccentricity,
-                        Inclination = lastTel.Inclination,
-                        Raan = lastTel.Raan,
-                        SemiMajorAxis = lastTel.SemiMajorAxis,
-                        X = lastTel.State.X,
-                        Y = lastTel.State.Y,
-                        Z = lastTel.State.Z,
-                        StageIndex = lastTel.StageIndex
-                    };
+                    var point = BuildTelemetryPoint(lastTel);
                     savedTelemetry.Add(point);
 
                     await Clients.Caller.SendAsync("OnTelemetryUpdate", point);
@@ -146,22 +141,7 @@ public class TelemetryHub : Hub
 
                 if (lastTel.IsComplete != 0)
                 {
-                    var finalPoint = new TelemetryPoint
-                    {
-                        Time = lastTel.Time,
-                        Altitude = lastTel.Altitude,
-                        Velocity = lastTel.Velocity,
-                        Apoapsis = lastTel.Apoapsis,
-                        Periapsis = lastTel.Periapsis,
-                        Eccentricity = lastTel.Eccentricity,
-                        Inclination = lastTel.Inclination,
-                        Raan = lastTel.Raan,
-                        SemiMajorAxis = lastTel.SemiMajorAxis,
-                        X = lastTel.State.X,
-                        Y = lastTel.State.Y,
-                        Z = lastTel.State.Z,
-                        StageIndex = lastTel.StageIndex
-                    };
+                    var finalPoint = BuildTelemetryPoint(lastTel);
                     savedTelemetry.Add(finalPoint);
                     await Clients.Caller.SendAsync("OnTelemetryUpdate", finalPoint);
 
@@ -223,6 +203,41 @@ public class TelemetryHub : Hub
             Events = events
         };
         return store.Save(saved);
+    }
+
+    private static TelemetryPoint BuildTelemetryPoint(TitanTelemetry tel)
+    {
+        return new TelemetryPoint
+        {
+            Time = tel.Time,
+            Altitude = tel.Altitude,
+            Velocity = tel.Velocity,
+            Apoapsis = tel.Apoapsis,
+            Periapsis = tel.Periapsis,
+            Eccentricity = tel.Eccentricity,
+            Inclination = tel.Inclination,
+            Raan = tel.Raan,
+            SemiMajorAxis = tel.SemiMajorAxis,
+            X = tel.State.X,
+            Y = tel.State.Y,
+            Z = tel.State.Z,
+            Vx = tel.State.Vx,
+            Vy = tel.State.Vy,
+            Vz = tel.State.Vz,
+            StageIndex = tel.StageIndex,
+            AttitudeW = tel.AttitudeW,
+            AttitudeX = tel.AttitudeX,
+            AttitudeY = tel.AttitudeY,
+            AttitudeZ = tel.AttitudeZ,
+            AngularVelocityX = tel.AngularVelocityX,
+            AngularVelocityY = tel.AngularVelocityY,
+            AngularVelocityZ = tel.AngularVelocityZ,
+            DynamicPressure = tel.DynamicPressure,
+            MachNumber = tel.MachNumber,
+            WheelSpeed = tel.WheelSpeed,
+            WheelMomentum = tel.WheelMomentum,
+            WheelCount = tel.WheelCount
+        };
     }
 
     private static List<StageRequest>? ResolveStages(SimulationRequest request)
