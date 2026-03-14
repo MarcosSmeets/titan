@@ -74,6 +74,7 @@ export interface StagePreset {
 
 export interface SimulationRequest {
   rocketId?: string;
+  rocketName?: string;
   targetAltitude: number;
   maxG: number;
   dt: number;

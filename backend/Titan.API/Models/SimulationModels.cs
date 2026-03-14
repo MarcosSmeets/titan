@@ -3,6 +3,7 @@ namespace Titan.API.Models;
 public class SimulationRequest
 {
     public string? RocketId { get; set; }
+    public string? RocketName { get; set; }
     public double TargetAltitude { get; set; } = 200000.0;
     public double MaxG { get; set; } = 4.0;
     public double Dt { get; set; } = 0.05;

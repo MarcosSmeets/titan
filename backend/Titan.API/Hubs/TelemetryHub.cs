@@ -31,9 +31,11 @@ public class TelemetryHub : Hub
             return;
         }
 
-        var rocketName = request.RocketId != null
-            ? Controllers.RocketsController.FindPreset(request.RocketId)?.Name ?? request.RocketId
-            : "Custom Rocket";
+        var rocketName = !string.IsNullOrEmpty(request.RocketName)
+            ? request.RocketName
+            : request.RocketId != null
+                ? Controllers.RocketsController.FindPreset(request.RocketId)?.Name ?? request.RocketId
+                : "Custom Rocket";
 
         await Clients.Caller.SendAsync("OnSimulationStart", new
         {

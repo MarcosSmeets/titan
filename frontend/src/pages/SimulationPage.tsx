@@ -95,11 +95,52 @@ const mccChartTabColors: Record<string, string> = {
   altitude: '#4488ff', velocity: '#ff4488', orbit: '#44cc66', attitude: '#ff88aa', aero: '#ffaa44',
 };
 
-function renderMccChart(type: string, data: any[], stageTimes: number[]) {
+function renderMccChart(type: string, data: any[], stageTimes: number[], compData?: { name: string; data: any[]; color: string }[]) {
   const stageLines = stageTimes.map((t, i) => (
     <ReferenceLine key={`s${i}`} x={t} stroke="#ffaa0040" strokeDasharray="2 3" strokeWidth={0.5} />
   ));
-  const commonProps = { data, margin: { top: 8, right: 12, bottom: 0, left: 0 } };
+
+  // Merge comparison data into the main data array by time
+  let mergedData = data;
+  const compLines: React.ReactNode[] = [];
+  if (compData && compData.length > 0) {
+    const timeMap = new Map<number, any>();
+    data.forEach(d => timeMap.set(d.time, { ...d }));
+    compData.forEach((comp, ci) => {
+      comp.data.forEach(d => {
+        const existing = timeMap.get(d.time) || { time: d.time };
+        existing[`altitude_c${ci}`] = d.altitude;
+        existing[`velocity_c${ci}`] = d.velocity;
+        existing[`apoapsis_c${ci}`] = d.apoapsis;
+        existing[`periapsis_c${ci}`] = d.periapsis;
+        existing[`eccentricity_c${ci}`] = d.eccentricity;
+        existing[`inclination_c${ci}`] = d.inclination;
+        existing[`dynamicPressure_c${ci}`] = d.dynamicPressure;
+        existing[`machNumber_c${ci}`] = d.machNumber;
+        existing[`roll_c${ci}`] = d.roll;
+        existing[`pitch_c${ci}`] = d.pitch;
+        existing[`yaw_c${ci}`] = d.yaw;
+        timeMap.set(d.time, existing);
+      });
+      const keyMap: Record<string, string[]> = {
+        altitude: [`altitude_c${ci}`, `apoapsis_c${ci}`, `periapsis_c${ci}`],
+        velocity: [`velocity_c${ci}`],
+        orbit: [`eccentricity_c${ci}`, `inclination_c${ci}`],
+        attitude: [`roll_c${ci}`, `pitch_c${ci}`, `yaw_c${ci}`],
+        aero: [`dynamicPressure_c${ci}`, `machNumber_c${ci}`],
+      };
+      (keyMap[type] || []).forEach(key => {
+        const yAxisId = (type === 'aero' && key.includes('machNumber')) ? 'right' : (type === 'aero' ? 'left' : undefined);
+        compLines.push(
+          <Line key={key} type="monotone" dataKey={key} stroke={comp.color} dot={false} strokeWidth={1} strokeDasharray="4 3"
+            name={`${comp.name}`} {...(yAxisId ? { yAxisId } : {})} />
+        );
+      });
+    });
+    mergedData = Array.from(timeMap.values()).sort((a, b) => a.time - b.time);
+  }
+
+  const commonProps = { data: mergedData, margin: { top: 8, right: 12, bottom: 0, left: 0 } };
   const ttStyle: React.CSSProperties = { background: '#0a0a18', border: '1px solid #1a1a2a', fontSize: '10px', borderRadius: '3px' };
 
   switch (type) {
@@ -114,6 +155,7 @@ function renderMccChart(type: string, data: any[], stageTimes: number[]) {
           <Line type="monotone" dataKey="altitude" stroke="#4488ff" dot={false} strokeWidth={1.5} name="Alt (km)" />
           <Line type="monotone" dataKey="apoapsis" stroke="#44cc66" dot={false} strokeWidth={1} name="Apo (km)" />
           <Line type="monotone" dataKey="periapsis" stroke="#ff8844" dot={false} strokeWidth={1} name="Peri (km)" />
+          {compLines}
         </LineChart>
       );
     case 'velocity':
@@ -125,6 +167,7 @@ function renderMccChart(type: string, data: any[], stageTimes: number[]) {
           {stageLines}
           <Tooltip contentStyle={ttStyle} labelFormatter={v => `T+${v}s`} />
           <Line type="monotone" dataKey="velocity" stroke="#ff4488" dot={false} strokeWidth={1.5} name="Vel (m/s)" />
+          {compLines}
         </LineChart>
       );
     case 'orbit':
@@ -137,6 +180,7 @@ function renderMccChart(type: string, data: any[], stageTimes: number[]) {
           <Tooltip contentStyle={ttStyle} labelFormatter={v => `T+${v}s`} />
           <Line type="monotone" dataKey="eccentricity" stroke="#aa44ff" dot={false} strokeWidth={1.5} name="Ecc" />
           <Line type="monotone" dataKey="inclination" stroke="#ff88aa" dot={false} strokeWidth={1} name="Inc (deg)" />
+          {compLines}
         </LineChart>
       );
     case 'attitude':
@@ -150,6 +194,7 @@ function renderMccChart(type: string, data: any[], stageTimes: number[]) {
           <Line type="monotone" dataKey="roll" stroke="#ff8888" dot={false} strokeWidth={1} name="Roll" />
           <Line type="monotone" dataKey="pitch" stroke="#88ff88" dot={false} strokeWidth={1} name="Pitch" />
           <Line type="monotone" dataKey="yaw" stroke="#8888ff" dot={false} strokeWidth={1} name="Yaw" />
+          {compLines}
         </LineChart>
       );
     case 'aero':
@@ -163,6 +208,7 @@ function renderMccChart(type: string, data: any[], stageTimes: number[]) {
           <Tooltip contentStyle={ttStyle} labelFormatter={v => `T+${v}s`} />
           <Line type="monotone" dataKey="dynamicPressure" stroke="#ffaa44" dot={false} strokeWidth={1.5} name="Q (kPa)" yAxisId="left" />
           <Line type="monotone" dataKey="machNumber" stroke="#cc88ff" dot={false} strokeWidth={1} name="Mach" yAxisId="right" />
+          {compLines}
         </LineChart>
       );
     default:
@@ -427,6 +473,26 @@ export default function SimulationPageComponent() {
 
   const stageTimes = useMemo(() => events.map(e => Math.round(e.time)), [events]);
 
+  const compChartData = useMemo(() => comparisons.map(c => ({
+    name: c.name,
+    color: c.color,
+    data: c.telemetry.map(t => {
+      const e = quatToEuler(t.attitudeW ?? 1, t.attitudeX ?? 0, t.attitudeY ?? 0, t.attitudeZ ?? 0);
+      return {
+        time: Math.round(t.time),
+        altitude: t.altitude / 1000,
+        velocity: t.velocity,
+        apoapsis: t.apoapsis / 1000,
+        periapsis: Math.max(t.periapsis / 1000, -500),
+        eccentricity: t.eccentricity,
+        inclination: t.inclination * 180 / Math.PI,
+        roll: e.roll, pitch: e.pitch, yaw: e.yaw,
+        dynamicPressure: (t.dynamicPressure ?? 0) / 1000,
+        machNumber: t.machNumber ?? 0,
+      };
+    }),
+  })), [comparisons]);
+
   const chartData = useMemo(() => telemetry.map(t => {
     const e = quatToEuler(t.attitudeW ?? 1, t.attitudeX ?? 0, t.attitudeY ?? 0, t.attitudeZ ?? 0);
     return {
@@ -597,7 +663,7 @@ export default function SimulationPageComponent() {
             <div style={{ height: '180px', padding: '0' }}>
               {chartData.length > 1 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  {renderMccChart(selectedChart, chartData, stageTimes)}
+                  {renderMccChart(selectedChart, chartData, stageTimes, compChartData)}
                 </ResponsiveContainer>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#334', fontSize: '11px' }}>

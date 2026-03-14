@@ -33,6 +33,7 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
       const custom = customRockets.find(r => r.id === selectedCustom);
       if (!custom) return;
       onLaunch({
+        rocketName: custom.name,
         targetAltitude: targetAlt * 1000,
         maxG: 4.0,
         dt: 0.05,
