@@ -76,7 +76,7 @@ public class CustomRocketsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "admin")]
+    [Authorize]
     public async Task<ActionResult> Create([FromBody] CreateCustomRocketRequest request)
     {
         var id = Guid.NewGuid().ToString("N")[..8];
@@ -106,7 +106,7 @@ public class CustomRocketsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "admin")]
+    [Authorize]
     public async Task<ActionResult> Delete(string id)
     {
         var rocket = await _db.CustomRockets

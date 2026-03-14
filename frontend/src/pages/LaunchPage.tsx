@@ -50,7 +50,7 @@ export default function LaunchPage() {
         rockets={rockets}
         onLaunch={onLaunch}
         onReplay={onReplay}
-        onBuildCustom={user?.role === 'admin' ? () => setShowRocketBuilder(true) : undefined}
+        onBuildCustom={user ? () => setShowRocketBuilder(true) : undefined}
       />
       {showRocketBuilder && (
         <RocketBuilderModal
