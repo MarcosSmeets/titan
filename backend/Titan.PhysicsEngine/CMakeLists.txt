@@ -106,3 +106,7 @@ target_link_libraries(TitanTest TitanPhysicsEngine)
 # Test suite
 add_executable(TitanTests tests/test_main.cpp)
 target_link_libraries(TitanTests TitanPhysicsEngine)
+
+# Advanced physics test suite
+add_executable(TitanAdvancedTests tests/test_advanced.cpp)
+target_link_libraries(TitanAdvancedTests TitanPhysicsEngine)
