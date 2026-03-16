@@ -1,378 +1,485 @@
-import { useRef, useMemo, useEffect, useState, Suspense, lazy } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, Stars, Line } from '@react-three/drei';
+import { useRef, useMemo, useEffect, useState, Suspense } from 'react';
+import { Canvas, useFrame, useThree, extend } from '@react-three/fiber';
+import { OrbitControls, Stars, Line, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import type { TelemetryPoint } from '../types';
 
-const EARTH_RADIUS_KM = 6371;
-const SCALE = 1; // 1 unit = 1 km
+const EARTH_R = 6371; // km
+const S = 1; // scale: 1 unit = 1 km
 
-interface Viewer3DProps {
+interface Props {
   telemetry: TelemetryPoint[];
-  targetAltitude: number; // meters
+  targetAltitude: number;
   isLive: boolean;
 }
 
-// --- Earth ---
+/* ── Earth ────────────────────────────────────────────── */
 function Earth() {
+  const meshRef = useRef<THREE.Mesh>(null);
+
+  // Procedural Earth colors via shader
+  const earthMat = useMemo(() => {
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        sunDir: { value: new THREE.Vector3(1, 0.3, 0.5).normalize() },
+      },
+      vertexShader: `
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+        varying vec2 vUv;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          vPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 sunDir;
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+        varying vec2 vUv;
+
+        // Simple hash for procedural continents
+        float hash(vec2 p) {
+          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+        float noise(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          f = f * f * (3.0 - 2.0 * f);
+          float a = hash(i);
+          float b = hash(i + vec2(1.0, 0.0));
+          float c = hash(i + vec2(0.0, 1.0));
+          float d = hash(i + vec2(1.0, 1.0));
+          return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+        }
+        float fbm(vec2 p) {
+          float v = 0.0;
+          float a = 0.5;
+          for (int i = 0; i < 5; i++) {
+            v += a * noise(p);
+            p *= 2.0;
+            a *= 0.5;
+          }
+          return v;
+        }
+
+        void main() {
+          float lat = asin(vNormal.y);
+          float lon = atan(vNormal.z, vNormal.x);
+          vec2 uv = vec2(lon / 6.2832 + 0.5, lat / 3.1416 + 0.5);
+
+          // Continent mask
+          float land = fbm(uv * 8.0 + vec2(1.7, 3.2));
+          land = smoothstep(0.42, 0.52, land);
+
+          // Ice caps
+          float ice = smoothstep(0.82, 0.92, abs(vNormal.y));
+
+          // Ocean color with depth variation
+          vec3 deepOcean = vec3(0.02, 0.06, 0.18);
+          vec3 shallowOcean = vec3(0.04, 0.12, 0.28);
+          float oceanDepth = fbm(uv * 12.0);
+          vec3 ocean = mix(deepOcean, shallowOcean, oceanDepth);
+
+          // Land color
+          vec3 forest = vec3(0.06, 0.14, 0.05);
+          vec3 desert = vec3(0.18, 0.14, 0.08);
+          vec3 mountain = vec3(0.12, 0.11, 0.10);
+          float biome = fbm(uv * 16.0 + vec2(5.0, 2.0));
+          vec3 landColor = mix(forest, desert, smoothstep(0.4, 0.6, biome));
+          landColor = mix(landColor, mountain, smoothstep(0.65, 0.8, biome));
+
+          vec3 iceColor = vec3(0.85, 0.88, 0.92);
+
+          vec3 baseColor = mix(ocean, landColor, land);
+          baseColor = mix(baseColor, iceColor, ice);
+
+          // Lighting
+          float NdotL = max(dot(vNormal, sunDir), 0.0);
+          float ambient = 0.08;
+          vec3 lit = baseColor * (ambient + NdotL * 0.92);
+
+          // Terminator glow
+          float terminator = smoothstep(-0.02, 0.08, NdotL);
+          lit = mix(vec3(0.01, 0.01, 0.03), lit, terminator);
+
+          gl_FragColor = vec4(lit, 1.0);
+        }
+      `,
+    });
+  }, []);
+
   return (
     <group>
-      {/* Main Earth sphere */}
-      <mesh>
-        <sphereGeometry args={[EARTH_RADIUS_KM * SCALE, 64, 64]} />
-        <meshStandardMaterial
-          color="#1a3a6a"
-          roughness={0.8}
-          metalness={0.1}
-        />
+      <mesh ref={meshRef} material={earthMat}>
+        <sphereGeometry args={[EARTH_R * S, 96, 96]} />
       </mesh>
-      {/* Grid lines on Earth */}
+      {/* Atmosphere layers */}
       <mesh>
-        <sphereGeometry args={[EARTH_RADIUS_KM * SCALE * 1.001, 32, 32]} />
-        <meshBasicMaterial
-          color="#2255aa"
-          wireframe
-          transparent
-          opacity={0.08}
-        />
+        <sphereGeometry args={[(EARTH_R + 60) * S, 64, 64]} />
+        <meshBasicMaterial color="#4488ff" transparent opacity={0.03} side={THREE.BackSide} />
       </mesh>
-      {/* Atmosphere glow */}
       <mesh>
-        <sphereGeometry args={[(EARTH_RADIUS_KM + 100) * SCALE, 48, 48]} />
-        <meshBasicMaterial
-          color="#4488ff"
-          transparent
-          opacity={0.04}
-          side={THREE.BackSide}
-        />
+        <sphereGeometry args={[(EARTH_R + 120) * S, 48, 48]} />
+        <meshBasicMaterial color="#6699ff" transparent opacity={0.015} side={THREE.BackSide} />
+      </mesh>
+      {/* Grid overlay */}
+      <mesh>
+        <sphereGeometry args={[EARTH_R * S * 1.001, 36, 18]} />
+        <meshBasicMaterial color="#3366aa" wireframe transparent opacity={0.04} />
       </mesh>
     </group>
   );
 }
 
-// --- Rocket Marker ---
-function RocketMarker({ telemetry }: { telemetry: TelemetryPoint[] }) {
-  const meshRef = useRef<THREE.Group>(null);
+/* ── Rocket with exhaust ──────────────────────────────── */
+function Rocket({ telemetry }: { telemetry: TelemetryPoint[] }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const exhaustRef = useRef<THREE.Mesh>(null);
   const latest = telemetry[telemetry.length - 1];
 
-  useFrame(() => {
-    if (!meshRef.current || !latest) return;
-    const x = (latest.x ?? 0) / 1000 * SCALE;
-    const y = (latest.y ?? 0) / 1000 * SCALE;
-    const z = (latest.z ?? 0) / 1000 * SCALE;
-    meshRef.current.position.set(x, y, z);
+  useFrame(({ clock }) => {
+    if (!groupRef.current || !latest) return;
+    const x = (latest.x ?? 0) / 1000 * S;
+    const y = (latest.y ?? 0) / 1000 * S;
+    const z = (latest.z ?? 0) / 1000 * S;
+    groupRef.current.position.set(x, y, z);
 
-    // Apply attitude quaternion
-    const w = latest.attitudeW ?? 1;
-    const qx = latest.attitudeX ?? 0;
-    const qy = latest.attitudeY ?? 0;
-    const qz = latest.attitudeZ ?? 0;
-    meshRef.current.quaternion.set(qx, qy, qz, w);
-  });
+    // Point rocket along velocity vector
+    const vx = latest.vx ?? 0;
+    const vy = latest.vy ?? 0;
+    const vz = latest.vz ?? 0;
+    const speed = Math.sqrt(vx*vx + vy*vy + vz*vz);
+    if (speed > 10) {
+      const dir = new THREE.Vector3(vx, vy, vz).normalize();
+      const up = new THREE.Vector3(x, y, z).normalize();
+      const mat = new THREE.Matrix4().lookAt(
+        new THREE.Vector3(0,0,0), dir, up
+      );
+      groupRef.current.quaternion.setFromRotationMatrix(mat);
+    }
 
-  if (!latest) return null;
-
-  return (
-    <group ref={meshRef}>
-      {/* Rocket body - cone + cylinder */}
-      <mesh position={[0, 15, 0]}>
-        <coneGeometry args={[8, 20, 8]} />
-        <meshStandardMaterial color="#ff4444" emissive="#ff2222" emissiveIntensity={0.3} />
-      </mesh>
-      <mesh position={[0, 0, 0]}>
-        <cylinderGeometry args={[8, 8, 20, 8]} />
-        <meshStandardMaterial color="#cccccc" emissive="#666666" emissiveIntensity={0.1} />
-      </mesh>
-      {/* Glow point for visibility */}
-      <pointLight color="#ff4444" intensity={100} distance={500} />
-    </group>
-  );
-}
-
-// --- Velocity Arrow ---
-function VelocityArrow({ telemetry }: { telemetry: TelemetryPoint[] }) {
-  const arrowRef = useRef<THREE.ArrowHelper>(null);
-  const latest = telemetry[telemetry.length - 1];
-
-  useFrame(() => {
-    if (!arrowRef.current || !latest) return;
-    const pos = new THREE.Vector3(
-      (latest.x ?? 0) / 1000 * SCALE,
-      (latest.y ?? 0) / 1000 * SCALE,
-      (latest.z ?? 0) / 1000 * SCALE
-    );
-    const vel = new THREE.Vector3(
-      (latest.vx ?? 0) / 1000,
-      (latest.vy ?? 0) / 1000,
-      (latest.vz ?? 0) / 1000
-    );
-    const speed = vel.length();
-    if (speed > 0.01) {
-      vel.normalize();
-      arrowRef.current.position.copy(pos);
-      arrowRef.current.setDirection(vel);
-      arrowRef.current.setLength(Math.min(speed * 30, 500), 30, 15);
-      arrowRef.current.visible = true;
-    } else {
-      arrowRef.current.visible = false;
+    // Exhaust flicker
+    if (exhaustRef.current) {
+      const hasThrust = latest.stageIndex !== undefined && speed > 50;
+      exhaustRef.current.visible = hasThrust;
+      if (hasThrust) {
+        const flicker = 0.8 + 0.2 * Math.sin(clock.elapsedTime * 30);
+        exhaustRef.current.scale.set(flicker, 1.0 + 0.3 * Math.sin(clock.elapsedTime * 20), flicker);
+      }
     }
   });
 
   if (!latest) return null;
 
+  const rocketScale = 6;
+
   return (
-    <arrowHelper
-      ref={arrowRef}
-      args={[new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 100, 0x44ff88]}
-    />
+    <group ref={groupRef}>
+      {/* Nose cone */}
+      <mesh position={[0, 0, 4 * rocketScale]} rotation={[Math.PI/2, 0, 0]}>
+        <coneGeometry args={[1.2 * rocketScale, 3 * rocketScale, 8]} />
+        <meshStandardMaterial color="#e8e8ec" metalness={0.4} roughness={0.3} />
+      </mesh>
+      {/* Body */}
+      <mesh rotation={[Math.PI/2, 0, 0]}>
+        <cylinderGeometry args={[1.2 * rocketScale, 1.2 * rocketScale, 6 * rocketScale, 8]} />
+        <meshStandardMaterial color="#c8ccd4" metalness={0.3} roughness={0.4} />
+      </mesh>
+      {/* Engine bell */}
+      <mesh position={[0, 0, -4.5 * rocketScale]} rotation={[Math.PI/2, 0, 0]}>
+        <coneGeometry args={[1.5 * rocketScale, 2 * rocketScale, 8]} />
+        <meshStandardMaterial color="#444" metalness={0.6} roughness={0.2} />
+      </mesh>
+      {/* Exhaust plume */}
+      <mesh ref={exhaustRef} position={[0, 0, -7 * rocketScale]} rotation={[Math.PI/2, 0, 0]}>
+        <coneGeometry args={[2 * rocketScale, 8 * rocketScale, 8]} />
+        <meshBasicMaterial color="#ff8830" transparent opacity={0.7} side={THREE.DoubleSide} />
+      </mesh>
+      {/* Inner exhaust (brighter core) */}
+      <mesh position={[0, 0, -6 * rocketScale]} rotation={[Math.PI/2, 0, 0]}>
+        <coneGeometry args={[0.8 * rocketScale, 5 * rocketScale, 6]} />
+        <meshBasicMaterial color="#ffe8a0" transparent opacity={0.5} />
+      </mesh>
+      {/* Glow */}
+      <pointLight color="#ff6622" intensity={800} distance={600} />
+    </group>
   );
 }
 
-// --- Trajectory Trail ---
-const MAX_TRAIL_POINTS = 2000;
+/* ── Trajectory Trail ─────────────────────────────────── */
+const MAX_TRAIL = 3000;
 
-function TrajectoryTrail({ telemetry }: { telemetry: TelemetryPoint[] }) {
-  const lineRef = useRef<THREE.Line>(null);
-  const positionsRef = useRef(new Float32Array(MAX_TRAIL_POINTS * 3));
-  const countRef = useRef(0);
-
-  useEffect(() => {
-    if (!lineRef.current) return;
-    const positions = positionsRef.current;
-    const count = Math.min(telemetry.length, MAX_TRAIL_POINTS);
-
-    // Sample evenly if telemetry exceeds buffer
-    const step = telemetry.length > MAX_TRAIL_POINTS
-      ? telemetry.length / MAX_TRAIL_POINTS
-      : 1;
-
+function Trail({ telemetry }: { telemetry: TelemetryPoint[] }) {
+  const points = useMemo(() => {
+    const step = telemetry.length > MAX_TRAIL ? telemetry.length / MAX_TRAIL : 1;
+    const count = Math.min(telemetry.length, MAX_TRAIL);
+    const pts: [number, number, number][] = [];
     for (let i = 0; i < count; i++) {
       const idx = Math.min(Math.floor(i * step), telemetry.length - 1);
       const t = telemetry[idx];
-      positions[i * 3] = (t.x ?? 0) / 1000 * SCALE;
-      positions[i * 3 + 1] = (t.y ?? 0) / 1000 * SCALE;
-      positions[i * 3 + 2] = (t.z ?? 0) / 1000 * SCALE;
-    }
-
-    const geom = lineRef.current.geometry as THREE.BufferGeometry;
-    geom.setAttribute('position', new THREE.BufferAttribute(positions.slice(0, count * 3), 3));
-    geom.setDrawRange(0, count);
-    geom.attributes.position.needsUpdate = true;
-    countRef.current = count;
-  }, [telemetry]);
-
-  return (
-    <line ref={lineRef as any}>
-      <bufferGeometry />
-      <lineBasicMaterial color="#ffaa00" linewidth={1} transparent opacity={0.8} />
-    </line>
-  );
-}
-
-// --- Target Orbit Ring ---
-function TargetOrbitRing({ targetAltitude }: { targetAltitude: number }) {
-  const radius = (EARTH_RADIUS_KM + targetAltitude / 1000) * SCALE;
-  const points = useMemo(() => {
-    const pts: [number, number, number][] = [];
-    const segments = 128;
-    for (let i = 0; i <= segments; i++) {
-      const angle = (i / segments) * Math.PI * 2;
-      pts.push([Math.cos(angle) * radius, Math.sin(angle) * radius, 0]);
+      pts.push([(t.x ?? 0)/1000*S, (t.y ?? 0)/1000*S, (t.z ?? 0)/1000*S]);
     }
     return pts;
-  }, [radius]);
+  }, [telemetry]);
+
+  if (points.length < 2) return null;
 
   return (
     <Line
       points={points}
-      color="#44ff88"
-      lineWidth={1}
+      color="#f59e0b"
+      lineWidth={1.5}
       transparent
-      opacity={0.4}
-      dashed
-      dashSize={50}
-      gapSize={30}
+      opacity={0.85}
     />
   );
 }
 
-// --- Predicted Orbit Ellipse ---
-function PredictedOrbit({ telemetry }: { telemetry: TelemetryPoint[] }) {
+/* ── Velocity Arrow ───────────────────────────────────── */
+function VelArrow({ telemetry }: { telemetry: TelemetryPoint[] }) {
+  const ref = useRef<THREE.ArrowHelper>(null);
   const latest = telemetry[telemetry.length - 1];
-  const points = useMemo(() => {
-    if (!latest || latest.eccentricity >= 1 || latest.semiMajorAxis <= 0) return null;
 
-    const a = latest.semiMajorAxis / 1000 * SCALE;
+  useFrame(() => {
+    if (!ref.current || !latest) return;
+    const pos = new THREE.Vector3(
+      (latest.x??0)/1000*S, (latest.y??0)/1000*S, (latest.z??0)/1000*S
+    );
+    const vel = new THREE.Vector3(
+      (latest.vx??0)/1000, (latest.vy??0)/1000, (latest.vz??0)/1000
+    );
+    const spd = vel.length();
+    if (spd > 0.01) {
+      vel.normalize();
+      ref.current.position.copy(pos);
+      ref.current.setDirection(vel);
+      ref.current.setLength(Math.min(spd * 25, 400), 25, 12);
+      ref.current.visible = true;
+    } else {
+      ref.current.visible = false;
+    }
+  });
+
+  if (!latest) return null;
+  return (
+    <arrowHelper
+      ref={ref}
+      args={[new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), 100, 0x22c55e]}
+    />
+  );
+}
+
+/* ── Target Orbit ─────────────────────────────────────── */
+function TargetOrbit({ alt }: { alt: number }) {
+  const r = (EARTH_R + alt / 1000) * S;
+  const pts = useMemo(() => {
+    const p: [number,number,number][] = [];
+    for (let i = 0; i <= 128; i++) {
+      const a = (i / 128) * Math.PI * 2;
+      p.push([Math.cos(a) * r, Math.sin(a) * r, 0]);
+    }
+    return p;
+  }, [r]);
+  return <Line points={pts} color="#22c55e" lineWidth={1} transparent opacity={0.35} dashed dashSize={40} gapSize={25} />;
+}
+
+/* ── Predicted Orbit ──────────────────────────────────── */
+function PredOrbit({ telemetry }: { telemetry: TelemetryPoint[] }) {
+  const latest = telemetry[telemetry.length - 1];
+  const pts = useMemo(() => {
+    if (!latest || latest.eccentricity >= 1 || latest.semiMajorAxis <= 0) return null;
+    const a = latest.semiMajorAxis / 1000 * S;
     const e = latest.eccentricity;
     const b = a * Math.sqrt(1 - e * e);
     const c = a * e;
-
-    const pts: [number, number, number][] = [];
-    const segments = 128;
-    for (let i = 0; i <= segments; i++) {
-      const angle = (i / segments) * Math.PI * 2;
-      pts.push([Math.cos(angle) * a - c, Math.sin(angle) * b, 0]);
+    const p: [number,number,number][] = [];
+    for (let i = 0; i <= 128; i++) {
+      const angle = (i / 128) * Math.PI * 2;
+      p.push([Math.cos(angle) * a - c, Math.sin(angle) * b, 0]);
     }
-    return pts;
+    return p;
   }, [latest?.semiMajorAxis, latest?.eccentricity]);
-
-  if (!points) return null;
-
-  return (
-    <Line
-      points={points}
-      color="#8844ff"
-      lineWidth={1}
-      transparent
-      opacity={0.3}
-      dashed
-      dashSize={40}
-      gapSize={20}
-    />
-  );
+  if (!pts) return null;
+  return <Line points={pts} color="#a855f7" lineWidth={1} transparent opacity={0.25} dashed dashSize={35} gapSize={20} />;
 }
 
-// --- Apoapsis/Periapsis Markers ---
+/* ── Apsis markers ────────────────────────────────────── */
 function ApsisMarkers({ telemetry }: { telemetry: TelemetryPoint[] }) {
   const latest = telemetry[telemetry.length - 1];
   if (!latest || latest.eccentricity >= 1 || latest.semiMajorAxis <= 0) return null;
-
-  const apoR = (EARTH_RADIUS_KM + (latest.apoapsis ?? 0) / 1000) * SCALE;
-  const periR = (EARTH_RADIUS_KM + Math.max(latest.periapsis ?? 0, 0) / 1000) * SCALE;
-
+  const apoR = (EARTH_R + (latest.apoapsis ?? 0) / 1000) * S;
+  const periR = (EARTH_R + Math.max(latest.periapsis ?? 0, 0) / 1000) * S;
   return (
     <group>
-      {/* Apoapsis */}
       <mesh position={[apoR, 0, 0]}>
-        <sphereGeometry args={[15, 8, 8]} />
-        <meshBasicMaterial color="#44cc66" />
+        <octahedronGeometry args={[12]} />
+        <meshBasicMaterial color="#22c55e" transparent opacity={0.8} />
       </mesh>
-      {/* Periapsis */}
       <mesh position={[-periR, 0, 0]}>
-        <sphereGeometry args={[15, 8, 8]} />
-        <meshBasicMaterial color="#ff8844" />
+        <octahedronGeometry args={[12]} />
+        <meshBasicMaterial color="#f59e0b" transparent opacity={0.8} />
       </mesh>
     </group>
   );
 }
 
-// --- Stage Separation Markers ---
-function StageSeparationMarkers({ telemetry }: { telemetry: TelemetryPoint[] }) {
+/* ── Stage sep markers ────────────────────────────────── */
+function StageSepMarkers({ telemetry }: { telemetry: TelemetryPoint[] }) {
   const markers = useMemo(() => {
-    const result: { x: number; y: number; z: number; stage: number }[] = [];
+    const res: { x: number; y: number; z: number; stage: number }[] = [];
     for (let i = 1; i < telemetry.length; i++) {
-      if (telemetry[i].stageIndex !== telemetry[i - 1].stageIndex) {
-        result.push({
-          x: (telemetry[i].x ?? 0) / 1000 * SCALE,
-          y: (telemetry[i].y ?? 0) / 1000 * SCALE,
-          z: (telemetry[i].z ?? 0) / 1000 * SCALE,
+      if (telemetry[i].stageIndex !== telemetry[i-1].stageIndex) {
+        res.push({
+          x: (telemetry[i].x??0)/1000*S,
+          y: (telemetry[i].y??0)/1000*S,
+          z: (telemetry[i].z??0)/1000*S,
           stage: telemetry[i].stageIndex,
         });
       }
     }
-    return result;
+    return res;
   }, [telemetry]);
-
+  const colors = ['#f59e0b', '#ec4899', '#06b6d4'];
   return (
     <group>
       {markers.map((m, i) => (
         <mesh key={i} position={[m.x, m.y, m.z]}>
-          <sphereGeometry args={[12, 8, 8]} />
-          <meshBasicMaterial color={['#ffaa00', '#ff44aa', '#44aaff'][m.stage % 3]} />
+          <sphereGeometry args={[8, 8, 8]} />
+          <meshBasicMaterial color={colors[m.stage % 3]} transparent opacity={0.9} />
         </mesh>
       ))}
     </group>
   );
 }
 
-// --- Camera Controller ---
-type CameraMode = 'orbit' | 'follow' | 'free';
+/* ── Camera ───────────────────────────────────────────── */
+type CamMode = 'orbit' | 'follow' | 'chase';
 
-function CameraController({ telemetry, mode }: { telemetry: TelemetryPoint[]; mode: CameraMode }) {
+function Cam({ telemetry, mode }: { telemetry: TelemetryPoint[]; mode: CamMode }) {
   const { camera } = useThree();
-  const controlsRef = useRef<any>(null);
+  const ctrlRef = useRef<any>(null);
   const latest = telemetry[telemetry.length - 1];
 
   useFrame(() => {
-    if (mode === 'follow' && latest) {
-      const target = new THREE.Vector3(
-        (latest.x ?? 0) / 1000 * SCALE,
-        (latest.y ?? 0) / 1000 * SCALE,
-        (latest.z ?? 0) / 1000 * SCALE
-      );
-      camera.position.lerp(
-        target.clone().add(new THREE.Vector3(200, 200, 200)),
-        0.05
-      );
+    if (!latest) return;
+    const target = new THREE.Vector3(
+      (latest.x??0)/1000*S, (latest.y??0)/1000*S, (latest.z??0)/1000*S
+    );
+
+    if (mode === 'follow') {
+      const rocketUp = target.clone().normalize();
+      const offset = rocketUp.clone().multiplyScalar(150)
+        .add(new THREE.Vector3(80, 80, 80));
+      camera.position.lerp(target.clone().add(offset), 0.04);
       camera.lookAt(target);
     }
-    if (mode === 'free' && latest && controlsRef.current) {
-      const target = new THREE.Vector3(
-        (latest.x ?? 0) / 1000 * SCALE,
-        (latest.y ?? 0) / 1000 * SCALE,
-        (latest.z ?? 0) / 1000 * SCALE
-      );
-      controlsRef.current.target.copy(target);
+    if (mode === 'chase') {
+      const vel = new THREE.Vector3(
+        (latest.vx??0)/1000, (latest.vy??0)/1000, (latest.vz??0)/1000
+      ).normalize();
+      const rocketUp = target.clone().normalize();
+      // Behind and above the rocket
+      const behind = vel.clone().multiplyScalar(-200);
+      const above = rocketUp.clone().multiplyScalar(60);
+      camera.position.lerp(target.clone().add(behind).add(above), 0.03);
+      camera.lookAt(target);
+    }
+    if (mode === 'orbit' && ctrlRef.current) {
+      ctrlRef.current.target.lerp(target, 0.02);
     }
   });
 
-  if (mode === 'follow') return null;
-
+  if (mode !== 'orbit') return null;
   return (
     <OrbitControls
-      ref={controlsRef}
-      enableDamping
-      dampingFactor={0.1}
-      minDistance={EARTH_RADIUS_KM * 0.5}
-      maxDistance={EARTH_RADIUS_KM * 6}
+      ref={ctrlRef}
+      enableDamping dampingFactor={0.08}
+      minDistance={EARTH_R * 0.3}
+      maxDistance={EARTH_R * 8}
+      rotateSpeed={0.5}
     />
   );
 }
 
-// --- Main Scene ---
-function Scene({ telemetry, targetAltitude, isLive, cameraMode }: Viewer3DProps & { cameraMode: CameraMode }) {
+/* ── HUD overlay ──────────────────────────────────────── */
+function HUD({ telemetry, isLive }: { telemetry: TelemetryPoint[]; isLive: boolean }) {
+  const latest = telemetry[telemetry.length - 1];
+  if (!latest) return null;
+
+  const alt = (latest.altitude / 1000).toFixed(1);
+  const vel = latest.velocity.toFixed(0);
+  const apo = (latest.apoapsis / 1000).toFixed(1);
+  const peri = (latest.periapsis / 1000).toFixed(1);
+
+  return (
+    <div style={{
+      position: 'absolute', bottom: 12, left: 12, zIndex: 10,
+      display: 'flex', gap: 16,
+      fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500,
+      background: 'rgba(6,6,12,0.75)', backdropFilter: 'blur(8px)',
+      padding: '8px 14px', borderRadius: 8,
+      border: '1px solid rgba(255,255,255,0.06)',
+    }}>
+      <span style={{ color: '#3b82f6' }}>ALT <span style={{ color: '#e8eaf0' }}>{alt}</span> km</span>
+      <span style={{ color: '#ec4899' }}>VEL <span style={{ color: '#e8eaf0' }}>{vel}</span> m/s</span>
+      <span style={{ color: '#22c55e' }}>APO <span style={{ color: '#e8eaf0' }}>{apo}</span> km</span>
+      <span style={{ color: '#f59e0b' }}>PER <span style={{ color: '#e8eaf0' }}>{peri}</span> km</span>
+    </div>
+  );
+}
+
+/* ── Scene ────────────────────────────────────────────── */
+function Scene({ telemetry, targetAltitude, isLive, cam }: Props & { cam: CamMode }) {
   return (
     <>
-      <ambientLight intensity={0.3} />
-      <directionalLight position={[10000, 5000, 10000]} intensity={1.5} />
-      <Stars radius={EARTH_RADIUS_KM * 20} depth={EARTH_RADIUS_KM * 10} count={3000} factor={100} fade />
-      <CameraController telemetry={telemetry} mode={cameraMode} />
+      <ambientLight intensity={0.15} />
+      <directionalLight position={[15000, 5000, 10000]} intensity={2.0} color="#fffaf0" />
+      <directionalLight position={[-8000, -3000, -5000]} intensity={0.15} color="#4466aa" />
+      <Stars radius={EARTH_R * 30} depth={EARTH_R * 15} count={4000} factor={120} fade speed={0.3} />
+      <Cam telemetry={telemetry} mode={cam} />
       <Earth />
-      <TargetOrbitRing targetAltitude={targetAltitude} />
-      <TrajectoryTrail telemetry={telemetry} />
-      <PredictedOrbit telemetry={telemetry} />
+      <TargetOrbit alt={targetAltitude} />
+      <Trail telemetry={telemetry} />
+      <PredOrbit telemetry={telemetry} />
       <ApsisMarkers telemetry={telemetry} />
-      <StageSeparationMarkers telemetry={telemetry} />
-      <RocketMarker telemetry={telemetry} />
-      <VelocityArrow telemetry={telemetry} />
+      <StageSepMarkers telemetry={telemetry} />
+      <Rocket telemetry={telemetry} />
+      <VelArrow telemetry={telemetry} />
     </>
   );
 }
 
-export default function Viewer3D({ telemetry, targetAltitude, isLive }: Viewer3DProps) {
-  const [cameraMode, setCameraMode] = useState<CameraMode>('orbit');
+/* ── Main ─────────────────────────────────────────────── */
+export default function Viewer3D({ telemetry, targetAltitude, isLive }: Props) {
+  const [cam, setCam] = useState<CamMode>('orbit');
 
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative', background: '#000' }}>
-      {/* Camera mode buttons */}
+    <div style={{ width: '100%', height: '100%', position: 'relative', background: '#020208' }}>
+      {/* Camera mode selector */}
       <div style={{
-        position: 'absolute', top: 8, left: 8, zIndex: 10,
+        position: 'absolute', top: 10, left: 10, zIndex: 10,
         display: 'flex', gap: 4,
       }}>
-        {(['orbit', 'follow', 'free'] as CameraMode[]).map(mode => (
+        {(['orbit', 'follow', 'chase'] as CamMode[]).map(mode => (
           <button
             key={mode}
-            onClick={() => setCameraMode(mode)}
+            onClick={() => setCam(mode)}
             style={{
-              padding: '4px 10px',
-              background: cameraMode === mode ? 'rgba(68,136,255,0.2)' : 'rgba(0,0,0,0.5)',
-              border: cameraMode === mode ? '1px solid #4488ff' : '1px solid #333',
-              borderRadius: 4,
-              color: cameraMode === mode ? '#4488ff' : '#888',
+              padding: '5px 12px',
+              background: cam === mode ? 'rgba(59,130,246,0.15)' : 'rgba(6,6,12,0.6)',
+              border: cam === mode ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.06)',
+              borderRadius: 6,
+              color: cam === mode ? '#3b82f6' : '#6b7088',
               cursor: 'pointer',
               fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: 1,
+              fontFamily: 'var(--font-mono)',
+              fontWeight: 600,
+              letterSpacing: '0.5px',
+              backdropFilter: 'blur(4px)',
+              transition: 'all 0.15s',
             }}
           >
             {mode.toUpperCase()}
@@ -380,22 +487,18 @@ export default function Viewer3D({ telemetry, targetAltitude, isLive }: Viewer3D
         ))}
       </div>
 
+      <HUD telemetry={telemetry} isLive={isLive} />
+
       <Canvas
         camera={{
-          position: [0, 0, EARTH_RADIUS_KM * 2.5],
-          fov: 45,
-          near: 1,
-          far: EARTH_RADIUS_KM * 50,
+          position: [0, 0, EARTH_R * 2.5],
+          fov: 45, near: 1, far: EARTH_R * 60,
         }}
+        gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
         style={{ width: '100%', height: '100%' }}
       >
         <Suspense fallback={null}>
-          <Scene
-            telemetry={telemetry}
-            targetAltitude={targetAltitude}
-            isLive={isLive}
-            cameraMode={cameraMode}
-          />
+          <Scene telemetry={telemetry} targetAltitude={targetAltitude} isLive={isLive} cam={cam} />
         </Suspense>
       </Canvas>
     </div>
