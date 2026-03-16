@@ -14,6 +14,8 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
   const [targetAlt, setTargetAlt] = useState(200);
   const [customRockets, setCustomRockets] = useState<CustomRocket[]>([]);
   const [selectedCustom, setSelectedCustom] = useState<string>('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [pointingMode, setPointingMode] = useState(2); // nadir default
 
   useEffect(() => {
     fetchCustomRockets().then(setCustomRockets).catch(() => {});
@@ -41,6 +43,8 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
         integratorType: 2,
         guidanceType: 0,
         timeWarp: 50,
+        pointingMode,
+        enable6DOF: true,
         customStages: custom.stages.map(s => ({
           dryMass: s.dryMass,
           fuelMass: s.fuelMass,
@@ -62,6 +66,8 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
       integratorType: 2,
       guidanceType: 0,
       timeWarp: 50,
+      pointingMode,
+      enable6DOF: true,
     });
   };
 
@@ -178,49 +184,100 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
 
         {/* Launch controls */}
         {(selectedRocket || selectedCustom) && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '24px',
-            padding: '20px 32px',
-            background: 'rgba(255,255,255,0.02)',
-            borderRadius: '12px',
-            border: '1px solid #1a1a2e',
-          }}>
-            <div>
-              <label style={labelStyle}>Target Orbit</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <input
-                  type="number"
-                  value={targetAlt}
-                  onChange={e => setTargetAlt(Number(e.target.value))}
-                  style={inputStyle}
-                />
-                <span style={{ color: '#667', fontSize: '13px' }}>km</span>
+          <>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '24px',
+              padding: '20px 32px',
+              background: 'rgba(255,255,255,0.02)',
+              borderRadius: '12px',
+              border: '1px solid #1a1a2e',
+            }}>
+              <div>
+                <label style={labelStyle}>Target Orbit</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <input
+                    type="number"
+                    value={targetAlt}
+                    onChange={e => setTargetAlt(Number(e.target.value))}
+                    style={inputStyle}
+                  />
+                  <span style={{ color: '#667', fontSize: '13px' }}>km</span>
+                </div>
               </div>
+
+              <button
+                onClick={handleLaunch}
+                style={{
+                  padding: '14px 40px',
+                  background: 'linear-gradient(135deg, #ff3333, #cc2200)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  letterSpacing: '3px',
+                  transition: 'transform 0.1s',
+                  boxShadow: '0 4px 20px rgba(255,50,50,0.3)',
+                }}
+                onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.97)')}
+                onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
+              >
+                LAUNCH
+              </button>
+
+              <button
+                onClick={() => setShowAdvanced(a => !a)}
+                style={{
+                  padding: '8px 16px',
+                  background: 'transparent',
+                  border: '1px solid #1a1a2e',
+                  borderRadius: '6px',
+                  color: showAdvanced ? '#ffaa00' : '#556',
+                  cursor: 'pointer',
+                  fontSize: '10px',
+                  letterSpacing: '1.5px',
+                  fontWeight: 600,
+                }}
+              >
+                {showAdvanced ? 'HIDE ADVANCED' : 'ADVANCED'}
+              </button>
             </div>
 
-            <button
-              onClick={handleLaunch}
-              style={{
-                padding: '14px 40px',
-                background: 'linear-gradient(135deg, #ff3333, #cc2200)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '8px',
-                fontWeight: 700,
-                fontSize: '16px',
-                cursor: 'pointer',
-                letterSpacing: '3px',
-                transition: 'transform 0.1s',
-                boxShadow: '0 4px 20px rgba(255,50,50,0.3)',
-              }}
-              onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.97)')}
-              onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
-            >
-              LAUNCH
-            </button>
-          </div>
+            {showAdvanced && (
+              <div style={{
+                width: '100%',
+                maxWidth: '800px',
+                padding: '16px 24px',
+                background: 'rgba(255,255,255,0.02)',
+                borderRadius: '10px',
+                border: '1px solid #1a1a2e',
+                display: 'flex',
+                gap: '24px',
+                alignItems: 'center',
+              }}>
+                <div>
+                  <label style={labelStyle}>Pointing Mode</label>
+                  <select
+                    value={pointingMode}
+                    onChange={e => setPointingMode(Number(e.target.value))}
+                    style={{
+                      ...inputStyle,
+                      width: '160px',
+                      appearance: 'auto' as const,
+                    }}
+                  >
+                    <option value={2}>Nadir (Earth-facing)</option>
+                    <option value={1}>Inertial Hold</option>
+                    <option value={3}>Sun Pointing</option>
+                    <option value={0}>None (free drift)</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Selected rocket details */}

@@ -247,11 +247,38 @@ extern "C"
         tel.angularVelocity_y = state.angularVelocity.y;
         tel.angularVelocity_z = state.angularVelocity.z;
 
-        tel.wheelCount = 0;
+        // Reaction wheel state
+        const auto &wheels = sim->simulation->GetReactionWheels();
+        tel.wheelCount = static_cast<int>(std::min(wheels.size(), size_t(4)));
         for (int i = 0; i < 4; i++)
         {
-            tel.wheelSpeed[i] = 0.0;
-            tel.wheelMomentum[i] = 0.0;
+            if (i < tel.wheelCount)
+            {
+                tel.wheelSpeed[i] = wheels[i].wheelSpeed;
+                tel.wheelMomentum[i] = wheels[i].wheelInertia * wheels[i].wheelSpeed;
+            }
+            else
+            {
+                tel.wheelSpeed[i] = 0.0;
+                tel.wheelMomentum[i] = 0.0;
+            }
+        }
+
+        // Aero data
+        const auto *atmosphere = sim->simulation->GetAtmosphere();
+        if (atmosphere)
+        {
+            double altitude = r - body.radius;
+            double speed = vel.Magnitude();
+            double density = atmosphere->GetDensity(altitude);
+            tel.dynamicPressure = 0.5 * density * speed * speed;
+
+            double temp = atmosphere->GetTemperature(altitude);
+            if (temp > 0.0)
+            {
+                double soundSpeed = std::sqrt(1.4 * 287.058 * temp);
+                tel.machNumber = (soundSpeed > 0.0) ? speed / soundSpeed : 0.0;
+            }
         }
 
         return tel;

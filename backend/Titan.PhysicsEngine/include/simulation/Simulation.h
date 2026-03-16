@@ -78,6 +78,17 @@ namespace titan::simulation
         const titan::environment::CelestialBody &GetBody() const { return m_body; }
         const titan::environment::Atmosphere *GetAtmosphere() const { return m_atmosphere.get(); }
 
+        struct ReactionWheelState
+        {
+            titan::math::Vector3 axis;
+            double maxTorque;
+            double maxMomentum;
+            double wheelInertia;
+            double wheelSpeed;
+        };
+
+        const std::vector<ReactionWheelState> &GetReactionWheels() const { return m_reactionWheels; }
+
     private:
         titan::math::Vector3 ComputeTotalAcceleration(
             const SimState &state, double time) const;
@@ -114,14 +125,6 @@ namespace titan::simulation
         std::unique_ptr<titan::gnc::Navigator> m_navigator;
         std::unique_ptr<titan::gnc::PointingMode> m_pointingMode;
 
-        struct ReactionWheelState
-        {
-            titan::math::Vector3 axis;
-            double maxTorque;
-            double maxMomentum;
-            double wheelInertia;
-            double wheelSpeed;
-        };
         std::vector<ReactionWheelState> m_reactionWheels;
 
         titan::math::Vector3 m_controlTorque;
