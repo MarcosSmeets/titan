@@ -80,11 +80,11 @@ function DataField({ label, value, color, mono, large }: {
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-      <span style={{ fontSize: '8px', color: '#445', letterSpacing: '1px', fontWeight: 600 }}>{label}</span>
+      <span style={{ fontSize: '8px', color: 'var(--text-3)', letterSpacing: '1px', fontWeight: 600, textTransform: 'uppercase' }}>{label}</span>
       <span style={{
         fontSize: large ? '14px' : '12px',
         color,
-        fontFamily: mono ? '"JetBrains Mono", "Fira Code", "Cascadia Code", monospace' : 'inherit',
+        fontFamily: mono ? 'var(--font-mono)' : 'inherit',
         fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
       }}>
         {value}
@@ -524,15 +524,15 @@ export default function SimulationPageComponent() {
   }, [rocketName, telemetry, events]);
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#08080e' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-0)' }}>
 
       {/* HEADER BAR */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '5px 12px', background: '#0a0a14', borderBottom: '1px solid #151520', flexShrink: 0,
+        padding: '5px 12px', background: 'var(--bg-1)', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <span style={{ fontSize: '10px', letterSpacing: '3px', color: '#556', fontWeight: 700 }}>TITAN MCC</span>
+          <span style={{ fontSize: '10px', letterSpacing: '3px', color: 'var(--text-3)', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>TITAN MCC</span>
           <span style={{ fontSize: '13px', fontWeight: 600, color: '#dde' }}>{rocketName || 'Simulation'}</span>
           {orbitResult && (
             <span style={{
@@ -616,7 +616,7 @@ export default function SimulationPageComponent() {
               </Suspense>
             )}
           </div>
-          <div style={{ flex: '0 0 25%', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderLeft: '1px solid #151520' }}>
+          <div style={{ flex: '0 0 25%', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderLeft: '1px solid var(--border-subtle)' }}>
             <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
               {latest ? (
                 <>
@@ -665,8 +665,8 @@ export default function SimulationPageComponent() {
         </div>
 
         {/* BOTTOM STRIP */}
-        <div style={{ flexShrink: 0, borderTop: '1px solid #151520', background: '#0a0a12', display: 'flex' }}>
-          <div style={{ flex: '0 0 35%', borderRight: '1px solid #151520', padding: '4px 8px', maxHeight: '210px', overflowY: 'auto' }}>
+        <div style={{ flexShrink: 0, borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-1)', display: 'flex' }}>
+          <div style={{ flex: '0 0 35%', borderRight: '1px solid var(--border-subtle)', padding: '4px 8px', maxHeight: '210px', overflowY: 'auto' }}>
             <div style={{ fontSize: '9px', letterSpacing: '1.5px', fontWeight: 700, color: '#ffaa00', marginBottom: '4px' }}>MISSION EVENTS</div>
             {latest ? (
               <MissionEventTimeline events={events} currentTime={latest.time} isLive={isActive} />
@@ -681,7 +681,7 @@ export default function SimulationPageComponent() {
                   style={{
                     flex: 1, padding: '5px 4px', border: 'none', cursor: 'pointer',
                     fontSize: '9px', letterSpacing: '1.5px', fontWeight: 700,
-                    background: selectedChart === tab ? '#0d0d1a' : '#060610',
+                    background: selectedChart === tab ? 'var(--bg-2)' : 'var(--bg-0)',
                     color: selectedChart === tab ? mccChartTabColors[tab] : '#334',
                     borderBottom: selectedChart === tab ? `2px solid ${mccChartTabColors[tab]}` : '2px solid transparent',
                   }}>
@@ -814,17 +814,17 @@ export default function SimulationPageComponent() {
         </div>
       )}
 
-      <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }`}</style>
+
     </div>
   );
 }
 
 // --- Styles ---
-const editorInputStyle: React.CSSProperties = { width: '70px', padding: '3px 6px', background: '#0c0c18', border: '1px solid #151520', borderRadius: '4px', color: '#ccc', fontSize: '11px', textAlign: 'right' };
+const editorInputStyle: React.CSSProperties = { width: '70px', padding: '4px 8px', background: 'var(--bg-0)', border: '1px solid var(--border)', borderRadius: '5px', color: 'var(--text-0)', fontSize: '11px', fontFamily: 'var(--font-mono)', textAlign: 'right' };
 const relaunchBtnStyle: React.CSSProperties = { padding: '8px 20px', background: 'linear-gradient(135deg, #ff3333, #cc2200)', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 700, fontSize: '12px', cursor: 'pointer', letterSpacing: '2px', boxShadow: '0 2px 10px rgba(255,50,50,0.3)' };
 const advisorBoxStyle: React.CSSProperties = { background: '#0a0a16', borderRadius: '8px', padding: '12px 14px', border: '1px solid #151520' };
-const mccPanelStyle: React.CSSProperties = { background: '#0a0a12', borderBottom: '1px solid #0d0d16' };
-const mccDataGridStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '6px 12px' };
-const mccHeaderBtnStyle: React.CSSProperties = { padding: '4px 10px', background: 'transparent', border: '1px solid #4488ff30', borderRadius: '3px', color: '#4488ff', cursor: 'pointer', fontSize: '9px', fontWeight: 700, letterSpacing: '1px' };
-const modalOverlayStyle: React.CSSProperties = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' };
-const modalContentStyle: React.CSSProperties = { background: '#0a0a16', borderRadius: '10px', border: '1px solid #1a1a2e', padding: '20px', maxWidth: '900px', width: '90%', maxHeight: '80vh', overflowY: 'auto' };
+const mccPanelStyle: React.CSSProperties = { background: 'var(--bg-1)', borderBottom: '1px solid var(--border-subtle)' };
+const mccDataGridStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(105px, 1fr))', gap: '8px 14px' };
+const mccHeaderBtnStyle: React.CSSProperties = { padding: '5px 12px', background: 'transparent', border: '1px solid rgba(59,130,246,0.2)', borderRadius: '5px', color: 'var(--accent)', cursor: 'pointer', fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 600, letterSpacing: '0.5px', transition: 'all 0.15s' };
+const modalOverlayStyle: React.CSSProperties = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const modalContentStyle: React.CSSProperties = { background: 'var(--bg-2)', borderRadius: '12px', border: '1px solid var(--border)', padding: '24px', maxWidth: '900px', width: '90%', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.5)' };
