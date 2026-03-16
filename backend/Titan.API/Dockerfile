@@ -25,10 +25,9 @@ WORKDIR /app
 COPY --from=dotnet-builder /app .
 COPY --from=cpp-builder /cpp/build/libTitanPhysicsEngine.so /app/
 
-ENV ASPNETCORE_URLS=http://+:5000
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV LD_LIBRARY_PATH=/app
 
-EXPOSE 5000
+EXPOSE ${PORT:-5000}
 
 ENTRYPOINT ["dotnet", "Titan.API.dll"]

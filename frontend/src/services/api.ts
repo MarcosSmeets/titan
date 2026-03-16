@@ -1,7 +1,8 @@
 import type { RocketPreset, SimulationRequest, SimulationResult, SavedSimulation, SavedSimulationDetail, CustomRocket } from '../types';
 import { getToken } from './auth';
+import { API_URL } from '../config';
 
-const API_BASE = '/api';
+const API_BASE = API_URL;
 
 function authHeaders(): Record<string, string> {
   const token = getToken();

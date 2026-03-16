@@ -1,4 +1,5 @@
 import type { AuthResponse } from '../types';
+import { API_URL } from '../config';
 
 const TOKEN_KEY = 'titan_token';
 
@@ -30,7 +31,7 @@ export function parseToken(jwt: string): { sub: string; email: string; username:
 }
 
 export async function login(email: string, password: string): Promise<AuthResponse> {
-  const res = await fetch('/api/auth/login', {
+  const res = await fetch(`${API_URL}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
@@ -43,7 +44,7 @@ export async function login(email: string, password: string): Promise<AuthRespon
 }
 
 export async function register(email: string, username: string, password: string): Promise<AuthResponse> {
-  const res = await fetch('/api/auth/register', {
+  const res = await fetch(`${API_URL}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, username, password }),
