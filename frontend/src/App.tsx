@@ -23,7 +23,7 @@ function AppLayout() {
       <nav style={navStyle}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           <h1
-            style={{ margin: 0, fontSize: '18px', letterSpacing: '3px', fontWeight: 700, cursor: 'pointer' }}
+            style={{ margin: 0, fontSize: '16px', letterSpacing: '4px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-mono)', color: 'var(--text-0)' }}
             onClick={() => navigate('/launch')}
           >
             TITAN
@@ -39,7 +39,7 @@ function AppLayout() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {latest && isPage('/simulation') && (
-            <span style={{ fontFamily: 'monospace', fontSize: '14px', color: isActive ? '#44ff44' : '#888', letterSpacing: '2px' }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: isActive ? 'var(--green)' : 'var(--text-2)', letterSpacing: '1.5px', fontWeight: 500 }}>
               T+{formatMissionTime(latest.time)}
             </span>
           )}
@@ -102,7 +102,7 @@ function AppLayout() {
         </Routes>
       </div>
 
-      <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }`}</style>
+
     </div>
   );
 }
@@ -173,13 +173,13 @@ function statusInfo(state: SimulationState) {
 
 const rootStyle: React.CSSProperties = {
   height: '100vh', display: 'flex', flexDirection: 'column',
-  background: '#0a0a14', color: '#fff',
-  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif',
+  background: 'var(--bg-0)', color: 'var(--text-0)',
+  fontFamily: 'var(--font-sans)',
   overflow: 'hidden',
 };
 
 const navStyle: React.CSSProperties = {
   padding: '10px 24px', display: 'flex', alignItems: 'center',
-  justifyContent: 'space-between', borderBottom: '1px solid #151520',
-  background: '#0a0a14', position: 'sticky', top: 0, zIndex: 50,
+  justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)',
+  background: 'var(--bg-1)', position: 'sticky', top: 0, zIndex: 50,
 };
