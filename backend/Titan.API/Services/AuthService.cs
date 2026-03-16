@@ -107,9 +107,9 @@ public class AuthService
         if (await _db.Users.AnyAsync(u => u.Role == "admin"))
             return;
 
-        var adminPassword = Environment.GetEnvironmentVariable("ADMIN_PASSWORD")
-            ?? throw new InvalidOperationException(
-                "ADMIN_PASSWORD environment variable is required for initial admin seeding.");
+        var adminPassword = Environment.GetEnvironmentVariable("ADMIN_PASSWORD");
+        if (string.IsNullOrEmpty(adminPassword))
+            return; // Skip seeding if no password provided
 
         var admin = new UserEntity
         {
