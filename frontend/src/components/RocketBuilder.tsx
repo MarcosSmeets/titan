@@ -158,8 +158,8 @@ export default function RocketBuilderModal({ onClose, onLaunch }: RocketBuilderP
                   onClick={() => setStageCount(n)}
                   style={{
                     padding: '6px 14px',
-                    background: stageCount === n ? 'rgba(68,136,255,0.15)' : 'rgba(255,255,255,0.03)',
-                    border: stageCount === n ? '1px solid #4488ff' : '1px solid #1a1a2e',
+                    background: stageCount === n ? 'var(--glow-accent)' : 'rgba(255,255,255,0.03)',
+                    border: stageCount === n ? '1px solid var(--accent)' : '1px solid var(--border)',
                     borderRadius: '4px',
                     color: '#fff',
                     cursor: 'pointer',
@@ -181,7 +181,7 @@ export default function RocketBuilderModal({ onClose, onLaunch }: RocketBuilderP
                 onChange={e => setTargetAlt(Number(e.target.value))}
                 style={{ ...inputStyle, width: '80px' }}
               />
-              <span style={{ color: '#556', fontSize: '12px' }}>km</span>
+              <span style={{ color: 'var(--text-2)', fontSize: '12px' }}>km</span>
             </div>
           </div>
         </div>
@@ -190,7 +190,7 @@ export default function RocketBuilderModal({ onClose, onLaunch }: RocketBuilderP
         <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
           {activeStages.map((stage, i) => (
             <div key={i} style={stageCardStyle}>
-              <div style={{ fontSize: '11px', color: '#4488ff', letterSpacing: '1.5px', fontWeight: 600, marginBottom: '8px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--accent)', letterSpacing: '1.5px', fontWeight: 600, marginBottom: '8px', fontFamily: 'var(--font-mono)' }}>
                 STAGE {i + 1}
               </div>
               <StageField label="Dry Mass (kg)" value={stage.dryMass} onChange={v => updateStage(i, 'dryMass', v)} />
@@ -204,13 +204,13 @@ export default function RocketBuilderModal({ onClose, onLaunch }: RocketBuilderP
               {/* Stats */}
               {stats[i] && (
                 <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #1a1a2e' }}>
-                  <div style={{ fontSize: '10px', color: '#556' }}>
-                    TWR: <span style={{ color: stats[i].twr >= 1 ? '#22aa44' : '#ff4444', fontWeight: 600 }}>
+                  <div style={{ fontSize: '10px', color: 'var(--text-2)', fontFamily: 'var(--font-mono)' }}>
+                    TWR: <span style={{ color: stats[i].twr >= 1 ? 'var(--green)' : 'var(--red)', fontWeight: 600 }}>
                       {stats[i].twr.toFixed(2)}
                     </span>
                   </div>
-                  <div style={{ fontSize: '10px', color: '#556' }}>
-                    Delta-V: <span style={{ color: '#aab', fontWeight: 600 }}>
+                  <div style={{ fontSize: '10px', color: 'var(--text-2)', fontFamily: 'var(--font-mono)' }}>
+                    Delta-V: <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>
                       {stats[i].deltaV.toFixed(0)} m/s
                     </span>
                   </div>
@@ -228,20 +228,20 @@ export default function RocketBuilderModal({ onClose, onLaunch }: RocketBuilderP
           padding: '12px 16px',
           background: 'rgba(255,255,255,0.02)',
           borderRadius: '8px',
-          border: '1px solid #1a1a2e',
+          border: '1px solid var(--border)',
           marginBottom: '16px',
         }}>
           <div>
-            <span style={{ fontSize: '11px', color: '#556', letterSpacing: '1px' }}>TOTAL DELTA-V: </span>
+            <span style={{ fontSize: '11px', color: 'var(--text-2)', letterSpacing: '1px', fontFamily: 'var(--font-mono)' }}>TOTAL DELTA-V: </span>
             <span style={{
               fontSize: '18px',
-              fontFamily: 'monospace',
+              fontFamily: 'var(--font-mono)',
               fontWeight: 700,
-              color: totalDeltaV >= 9400 ? '#22aa44' : totalDeltaV >= 7800 ? '#ffaa00' : '#ff4444',
+              color: totalDeltaV >= 9400 ? 'var(--green)' : totalDeltaV >= 7800 ? 'var(--amber)' : 'var(--red)',
             }}>
               {totalDeltaV.toFixed(0)} m/s
             </span>
-            <span style={{ fontSize: '10px', color: '#445', marginLeft: '8px' }}>
+            <span style={{ fontSize: '10px', color: 'var(--text-3)', marginLeft: '8px' }}>
               (LEO ~9,400 m/s)
             </span>
           </div>
@@ -255,9 +255,9 @@ export default function RocketBuilderModal({ onClose, onLaunch }: RocketBuilderP
             style={{
               flex: 1,
               padding: '14px',
-              background: 'rgba(68,136,255,0.1)',
-              color: '#4488ff',
-              border: '1px solid rgba(68,136,255,0.3)',
+              background: 'var(--glow-accent)',
+              color: 'var(--accent)',
+              border: '1px solid rgba(59,130,246,0.3)',
               borderRadius: '8px',
               fontWeight: 700,
               fontSize: '14px',
@@ -299,7 +299,7 @@ function StageField({ label, value, onChange, step }: {
 }) {
   return (
     <div style={{ marginBottom: '6px' }}>
-      <label style={{ fontSize: '9px', color: '#445', letterSpacing: '0.5px' }}>{label}</label>
+      <label style={{ fontSize: '9px', color: 'var(--text-3)', letterSpacing: '0.5px', fontFamily: 'var(--font-mono)' }}>{label}</label>
       <input
         type="number"
         value={value}
@@ -308,12 +308,13 @@ function StageField({ label, value, onChange, step }: {
         style={{
           width: '100%',
           padding: '4px 6px',
-          background: '#0c0c18',
-          border: '1px solid #151520',
+          background: 'var(--bg-0)',
+          border: '1px solid var(--border-subtle)',
           borderRadius: '4px',
-          color: '#ccc',
+          color: 'var(--text-1)',
           fontSize: '12px',
           boxSizing: 'border-box',
+          fontFamily: 'var(--font-mono)',
         }}
       />
     </div>
@@ -332,22 +333,22 @@ const overlayStyle: React.CSSProperties = {
 };
 
 const modalStyle: React.CSSProperties = {
-  background: '#0f0f1a',
-  border: '1px solid #1a1a2e',
+  background: 'var(--bg-2)',
+  border: '1px solid var(--border)',
   borderRadius: '16px',
   padding: '24px',
   maxWidth: '720px',
   width: '90vw',
   maxHeight: '90vh',
   overflowY: 'auto',
-  color: '#fff',
+  color: 'var(--text-0)',
 };
 
 const closeBtnStyle: React.CSSProperties = {
   background: 'none',
-  border: '1px solid #333',
+  border: '1px solid var(--border)',
   borderRadius: '4px',
-  color: '#666',
+  color: 'var(--text-2)',
   cursor: 'pointer',
   padding: '4px 10px',
   fontSize: '12px',
@@ -356,25 +357,27 @@ const closeBtnStyle: React.CSSProperties = {
 const labelStyle: React.CSSProperties = {
   display: 'block',
   fontSize: '10px',
-  color: '#556',
+  color: 'var(--text-2)',
   letterSpacing: '1px',
   marginBottom: '4px',
+  fontFamily: 'var(--font-mono)',
 };
 
 const inputStyle: React.CSSProperties = {
   padding: '8px 10px',
-  background: '#0c0c18',
-  border: '1px solid #1a1a2e',
+  background: 'var(--bg-0)',
+  border: '1px solid var(--border)',
   borderRadius: '6px',
-  color: '#fff',
+  color: 'var(--text-0)',
   fontSize: '14px',
   boxSizing: 'border-box',
+  fontFamily: 'var(--font-mono)',
 };
 
 const stageCardStyle: React.CSSProperties = {
   flex: 1,
   padding: '12px',
   background: 'rgba(255,255,255,0.02)',
-  border: '1px solid #1a1a2e',
+  border: '1px solid var(--border)',
   borderRadius: '8px',
 };

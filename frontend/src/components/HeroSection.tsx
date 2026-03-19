@@ -78,23 +78,8 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
       minHeight: '100vh',
       display: 'flex',
       flexDirection: 'column',
-      background: 'radial-gradient(ellipse at 50% 120%, #0a1628 0%, #0a0a14 60%)',
+      background: 'radial-gradient(ellipse at 50% 120%, #0a1628 0%, var(--bg-1) 60%)',
     }}>
-      {/* Top bar */}
-      <header style={{
-        padding: '16px 32px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        <h1 style={{ margin: 0, fontSize: '20px', letterSpacing: '4px', fontWeight: 700 }}>
-          TITAN
-        </h1>
-        <span style={{ fontSize: '12px', color: '#555' }}>
-          Aerospace Physics Engine v1.0
-        </span>
-      </header>
-
       {/* Hero content */}
       <div style={{
         flex: 1,
@@ -116,11 +101,11 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
           }}>
             Simulate orbital launches
             <br />
-            <span style={{ color: '#4488ff', fontWeight: 600 }}>in real time</span>
+            <span style={{ color: 'var(--accent)', fontWeight: 600 }}>in real time</span>
           </h2>
           <p style={{
             fontSize: '16px',
-            color: '#778',
+            color: 'var(--text-2)',
             lineHeight: 1.6,
             margin: 0,
           }}>
@@ -137,10 +122,12 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
         }}>
           <div style={{
             fontSize: '11px',
-            color: '#556',
+            color: 'var(--text-2)',
             letterSpacing: '2px',
             marginBottom: '12px',
             textAlign: 'center',
+            fontFamily: 'var(--font-mono)',
+            fontWeight: 600,
           }}>
             SELECT A ROCKET
           </div>
@@ -156,13 +143,13 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
                 style={{
                   padding: '14px 10px',
                   border: selectedRocket === rocket.id
-                    ? '1px solid #4488ff'
-                    : '1px solid #1a1a2e',
+                    ? '1px solid var(--accent)'
+                    : '1px solid var(--border)',
                   borderRadius: '8px',
                   background: selectedRocket === rocket.id
-                    ? 'rgba(68,136,255,0.08)'
+                    ? 'var(--glow-accent)'
                     : 'rgba(255,255,255,0.02)',
-                  color: '#fff',
+                  color: 'var(--text-0)',
                   cursor: 'pointer',
                   textAlign: 'center',
                   transition: 'all 0.15s',
@@ -171,10 +158,10 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
                 <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>
                   {rocket.name}
                 </div>
-                <div style={{ fontSize: '10px', color: '#667' }}>
+                <div style={{ fontSize: '10px', color: 'var(--text-2)' }}>
                   {rocket.manufacturer}
                 </div>
-                <div style={{ fontSize: '11px', color: '#4488ff', marginTop: '6px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--accent)', marginTop: '6px', fontFamily: 'var(--font-mono)' }}>
                   {(rocket.payloadToLEO / 1000).toFixed(1)}t to LEO
                 </div>
               </button>
@@ -192,7 +179,7 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
               padding: '20px 32px',
               background: 'rgba(255,255,255,0.02)',
               borderRadius: '12px',
-              border: '1px solid #1a1a2e',
+              border: '1px solid var(--border)',
             }}>
               <div>
                 <label style={labelStyle}>Target Orbit</label>
@@ -203,7 +190,7 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
                     onChange={e => setTargetAlt(Number(e.target.value))}
                     style={inputStyle}
                   />
-                  <span style={{ color: '#667', fontSize: '13px' }}>km</span>
+                  <span style={{ color: 'var(--text-2)', fontSize: '13px' }}>km</span>
                 </div>
               </div>
 
@@ -233,13 +220,14 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
                 style={{
                   padding: '8px 16px',
                   background: 'transparent',
-                  border: '1px solid #1a1a2e',
+                  border: '1px solid var(--border)',
                   borderRadius: '6px',
-                  color: showAdvanced ? '#ffaa00' : '#556',
+                  color: showAdvanced ? 'var(--amber)' : 'var(--text-2)',
                   cursor: 'pointer',
                   fontSize: '10px',
                   letterSpacing: '1.5px',
                   fontWeight: 600,
+                  fontFamily: 'var(--font-mono)',
                 }}
               >
                 {showAdvanced ? 'HIDE ADVANCED' : 'ADVANCED'}
@@ -253,7 +241,7 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
                 padding: '16px 24px',
                 background: 'rgba(255,255,255,0.02)',
                 borderRadius: '10px',
-                border: '1px solid #1a1a2e',
+                border: '1px solid var(--border)',
                 display: 'flex',
                 gap: '24px',
                 alignItems: 'center',
@@ -286,7 +274,7 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
             display: 'flex',
             gap: '32px',
             fontSize: '12px',
-            color: '#556',
+            color: 'var(--text-2)',
           }}>
             <Stat label="Height" value={`${selected.height} m`} />
             <Stat label="Launch Mass" value={`${(selected.launchMass / 1000).toFixed(0)} t`} />
@@ -304,12 +292,13 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
             style={{
               padding: '10px 24px',
               background: 'rgba(255,255,255,0.03)',
-              border: '1px solid #1a1a2e',
+              border: '1px solid var(--border)',
               borderRadius: '8px',
-              color: '#667',
+              color: 'var(--text-2)',
               cursor: 'pointer',
               fontSize: '12px',
               letterSpacing: '1.5px',
+              fontFamily: 'var(--font-mono)',
               transition: 'all 0.15s',
             }}
           >
@@ -320,7 +309,7 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
         {/* Saved custom rockets */}
         {customRockets.length > 0 && (
           <div style={{ width: '100%', maxWidth: '800px', marginTop: '8px' }}>
-            <div style={{ fontSize: '11px', color: '#556', letterSpacing: '2px', marginBottom: '12px', textAlign: 'center' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-2)', letterSpacing: '2px', marginBottom: '12px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
               YOUR CUSTOM ROCKETS
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px' }}>
@@ -330,21 +319,21 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
                   onClick={() => { setSelectedCustom(cr.id); setSelectedRocket(''); }}
                   style={{
                     padding: '12px 10px',
-                    border: selectedCustom === cr.id ? '1px solid #ffaa00' : '1px solid #1a1a2e',
+                    border: selectedCustom === cr.id ? '1px solid var(--amber)' : '1px solid var(--border)',
                     borderRadius: '8px',
-                    background: selectedCustom === cr.id ? 'rgba(255,170,0,0.08)' : 'rgba(255,255,255,0.02)',
+                    background: selectedCustom === cr.id ? 'var(--amber-dim)' : 'rgba(255,255,255,0.02)',
                     cursor: 'pointer',
                     textAlign: 'center',
                     position: 'relative',
                   }}
                 >
                   <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>{cr.name}</div>
-                  <div style={{ fontSize: '10px', color: '#667' }}>{cr.stageCount} stage{cr.stageCount !== 1 ? 's' : ''}</div>
+                  <div style={{ fontSize: '10px', color: 'var(--text-2)' }}>{cr.stageCount} stage{cr.stageCount !== 1 ? 's' : ''}</div>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleDeleteCustom(cr.id); }}
                     style={{
                       position: 'absolute', top: '4px', right: '4px',
-                      background: 'none', border: 'none', color: '#553', cursor: 'pointer', fontSize: '10px',
+                      background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '10px',
                     }}
                   >
                     x
@@ -362,7 +351,7 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
         display: 'flex',
         justifyContent: 'center',
         gap: '48px',
-        borderTop: '1px solid #111',
+        borderTop: '1px solid var(--border-subtle)',
       }}>
         <Feature icon="3D" text="Full 3D orbital mechanics with classical elements" />
         <Feature icon="RK" text="Adaptive Dormand-Prince RK45 integration" />
@@ -376,22 +365,23 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ textAlign: 'center' }}>
-      <div style={{ color: '#445', fontSize: '10px', letterSpacing: '1px' }}>{label}</div>
-      <div style={{ color: '#aab', fontSize: '14px', fontWeight: 600 }}>{value}</div>
+      <div style={{ color: 'var(--text-3)', fontSize: '10px', letterSpacing: '1px', fontFamily: 'var(--font-mono)' }}>{label}</div>
+      <div style={{ color: 'var(--text-1)', fontSize: '14px', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{value}</div>
     </div>
   );
 }
 
 function Feature({ icon, text }: { icon: string; text: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#556' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-2)' }}>
       <div style={{
         width: '28px', height: '28px',
         borderRadius: '6px',
-        background: 'rgba(68,136,255,0.08)',
-        border: '1px solid #1a2a4e',
+        background: 'var(--glow-accent)',
+        border: '1px solid rgba(59,130,246,0.25)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: '9px', fontWeight: 700, color: '#4488ff', letterSpacing: '0.5px',
+        fontSize: '9px', fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.5px',
+        fontFamily: 'var(--font-mono)',
       }}>
         {icon}
       </div>
@@ -403,17 +393,19 @@ function Feature({ icon, text }: { icon: string; text: string }) {
 const labelStyle: React.CSSProperties = {
   display: 'block',
   fontSize: '10px',
-  color: '#556',
+  color: 'var(--text-2)',
   letterSpacing: '1px',
   marginBottom: '6px',
+  fontFamily: 'var(--font-mono)',
 };
 
 const inputStyle: React.CSSProperties = {
   width: '80px',
   padding: '10px 12px',
-  background: '#0f0f1a',
-  border: '1px solid #1a1a2e',
+  background: 'var(--bg-0)',
+  border: '1px solid var(--border)',
   borderRadius: '6px',
-  color: '#fff',
+  color: 'var(--text-0)',
   fontSize: '14px',
+  fontFamily: 'var(--font-mono)',
 };

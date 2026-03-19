@@ -78,32 +78,39 @@ function Earth() {
           float ice = smoothstep(0.82, 0.92, abs(vNormal.y));
 
           // Ocean color with depth variation
-          vec3 deepOcean = vec3(0.02, 0.06, 0.18);
-          vec3 shallowOcean = vec3(0.04, 0.12, 0.28);
+          vec3 deepOcean = vec3(0.016, 0.118, 0.227);
+          vec3 shallowOcean = vec3(0.04, 0.188, 0.345);
           float oceanDepth = fbm(uv * 12.0);
           vec3 ocean = mix(deepOcean, shallowOcean, oceanDepth);
 
           // Land color
-          vec3 forest = vec3(0.06, 0.14, 0.05);
-          vec3 desert = vec3(0.18, 0.14, 0.08);
-          vec3 mountain = vec3(0.12, 0.11, 0.10);
+          vec3 forest = vec3(0.047, 0.165, 0.04);
+          vec3 desert = vec3(0.165, 0.125, 0.063);
+          vec3 mountain = vec3(0.102, 0.094, 0.086);
           float biome = fbm(uv * 16.0 + vec2(5.0, 2.0));
           vec3 landColor = mix(forest, desert, smoothstep(0.4, 0.6, biome));
           landColor = mix(landColor, mountain, smoothstep(0.65, 0.8, biome));
 
-          vec3 iceColor = vec3(0.85, 0.88, 0.92);
+          vec3 iceColor = vec3(0.753, 0.784, 0.831);
 
           vec3 baseColor = mix(ocean, landColor, land);
           baseColor = mix(baseColor, iceColor, ice);
 
           // Lighting
           float NdotL = max(dot(vNormal, sunDir), 0.0);
-          float ambient = 0.08;
-          vec3 lit = baseColor * (ambient + NdotL * 0.92);
+          float ambient = 0.15;
+          vec3 lit = baseColor * (ambient + NdotL * 0.85);
 
           // Terminator glow
           float terminator = smoothstep(-0.02, 0.08, NdotL);
           lit = mix(vec3(0.01, 0.01, 0.03), lit, terminator);
+
+          // City lights on night side
+          float nightMask = smoothstep(0.05, -0.1, NdotL);
+          float cities = fbm(uv * 32.0 + vec2(3.0, 7.0));
+          cities = smoothstep(0.55, 0.7, cities) * land;
+          vec3 cityGlow = vec3(1.0, 0.85, 0.5) * cities * 0.15 * nightMask;
+          lit += cityGlow;
 
           gl_FragColor = vec4(lit, 1.0);
         }
@@ -119,11 +126,11 @@ function Earth() {
       {/* Atmosphere layers */}
       <mesh>
         <sphereGeometry args={[(EARTH_R + 60) * S, 64, 64]} />
-        <meshBasicMaterial color="#4488ff" transparent opacity={0.03} side={THREE.BackSide} />
+        <meshBasicMaterial color="#4488ff" transparent opacity={0.05} side={THREE.BackSide} />
       </mesh>
       <mesh>
         <sphereGeometry args={[(EARTH_R + 120) * S, 48, 48]} />
-        <meshBasicMaterial color="#6699ff" transparent opacity={0.015} side={THREE.BackSide} />
+        <meshBasicMaterial color="#6699ff" transparent opacity={0.03} side={THREE.BackSide} />
       </mesh>
       {/* Grid overlay */}
       <mesh>
@@ -423,10 +430,10 @@ function HUD({ telemetry, isLive }: { telemetry: TelemetryPoint[]; isLive: boole
       padding: '8px 14px', borderRadius: 8,
       border: '1px solid rgba(255,255,255,0.06)',
     }}>
-      <span style={{ color: '#3b82f6' }}>ALT <span style={{ color: '#e8eaf0' }}>{alt}</span> km</span>
-      <span style={{ color: '#ec4899' }}>VEL <span style={{ color: '#e8eaf0' }}>{vel}</span> m/s</span>
-      <span style={{ color: '#22c55e' }}>APO <span style={{ color: '#e8eaf0' }}>{apo}</span> km</span>
-      <span style={{ color: '#f59e0b' }}>PER <span style={{ color: '#e8eaf0' }}>{peri}</span> km</span>
+      <span style={{ color: 'var(--accent)' }}>ALT <span style={{ color: 'var(--text-0)' }}>{alt}</span> km</span>
+      <span style={{ color: '#ec4899' }}>VEL <span style={{ color: 'var(--text-0)' }}>{vel}</span> m/s</span>
+      <span style={{ color: 'var(--green)' }}>APO <span style={{ color: 'var(--text-0)' }}>{apo}</span> km</span>
+      <span style={{ color: 'var(--amber)' }}>PER <span style={{ color: 'var(--text-0)' }}>{peri}</span> km</span>
     </div>
   );
 }
@@ -435,8 +442,8 @@ function HUD({ telemetry, isLive }: { telemetry: TelemetryPoint[]; isLive: boole
 function Scene({ telemetry, targetAltitude, isLive, cam }: Props & { cam: CamMode }) {
   return (
     <>
-      <ambientLight intensity={0.15} />
-      <directionalLight position={[15000, 5000, 10000]} intensity={2.0} color="#fffaf0" />
+      <ambientLight intensity={0.25} />
+      <directionalLight position={[15000, 5000, 10000]} intensity={2.5} color="#fffaf0" />
       <directionalLight position={[-8000, -3000, -5000]} intensity={0.15} color="#4466aa" />
       <Stars radius={EARTH_R * 30} depth={EARTH_R * 15} count={4000} factor={120} fade speed={0.3} />
       <Cam telemetry={telemetry} mode={cam} />
@@ -454,7 +461,15 @@ function Scene({ telemetry, targetAltitude, isLive, cam }: Props & { cam: CamMod
 
 /* ── Main ─────────────────────────────────────────────── */
 export default function Viewer3D({ telemetry, targetAltitude, isLive }: Props) {
-  const [cam, setCam] = useState<CamMode>('orbit');
+  const [cam, setCam] = useState<CamMode>(isLive ? 'follow' : 'orbit');
+  const prevIsLive = useRef(isLive);
+
+  useEffect(() => {
+    if (isLive && !prevIsLive.current) {
+      setCam('follow');
+    }
+    prevIsLive.current = isLive;
+  }, [isLive]);
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative', background: '#020208' }}>
@@ -472,7 +487,7 @@ export default function Viewer3D({ telemetry, targetAltitude, isLive }: Props) {
               background: cam === mode ? 'rgba(59,130,246,0.15)' : 'rgba(6,6,12,0.6)',
               border: cam === mode ? '1px solid rgba(59,130,246,0.4)' : '1px solid rgba(255,255,255,0.06)',
               borderRadius: 6,
-              color: cam === mode ? '#3b82f6' : '#6b7088',
+              color: cam === mode ? 'var(--accent, #3b82f6)' : 'var(--text-2, #6b7088)',
               cursor: 'pointer',
               fontSize: 10,
               fontFamily: 'var(--font-mono)',

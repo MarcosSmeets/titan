@@ -31,7 +31,7 @@ function AppLayout() {
           <NavBtn active={isPage('/launch')} onClick={() => navigate('/launch')}>Launch</NavBtn>
           {simState !== 'idle' && (
             <NavBtn active={isPage('/simulation')} onClick={() => navigate('/simulation')}>
-              Simulation {isActive && <span style={{ color: '#44ff44', marginLeft: '4px' }}>LIVE</span>}
+              Simulation {isActive && <span style={{ color: 'var(--green)', marginLeft: '4px' }}>LIVE</span>}
             </NavBtn>
           )}
           <NavBtn active={isPage('/history')} onClick={() => navigate('/history')}>History</NavBtn>
@@ -46,16 +46,16 @@ function AppLayout() {
           {simState !== 'idle' && isPage('/simulation') && <StatusBadge state={simState} />}
           {user ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '11px', color: '#aab', letterSpacing: '1px' }}>{user.username}</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-1)', letterSpacing: '1px' }}>{user.username}</span>
               <span style={{
-                fontSize: '9px', color: user.role === 'admin' ? '#ffaa44' : '#4488ff',
-                background: user.role === 'admin' ? '#ffaa4420' : '#4488ff20',
+                fontSize: '9px', color: user.role === 'admin' ? 'var(--amber)' : 'var(--accent)',
+                background: user.role === 'admin' ? 'var(--amber-dim)' : 'var(--glow-accent)',
                 padding: '2px 6px', borderRadius: '8px', fontWeight: 700, letterSpacing: '1px',
               }}>
                 {user.role.toUpperCase()}
               </span>
               <button onClick={() => { logout(); navigate('/launch'); }} style={{
-                background: 'none', border: '1px solid #333', color: '#667',
+                background: 'none', border: '1px solid var(--border)', color: 'var(--text-2)',
                 fontSize: '10px', padding: '3px 8px', borderRadius: '4px', cursor: 'pointer', letterSpacing: '1px',
               }}>
                 Logout
@@ -64,13 +64,13 @@ function AppLayout() {
           ) : (
             <div style={{ display: 'flex', gap: '8px' }}>
               <button onClick={() => navigate('/login')} style={{
-                background: 'none', border: '1px solid #333', color: '#aab',
+                background: 'none', border: '1px solid var(--border)', color: 'var(--text-1)',
                 fontSize: '10px', padding: '3px 8px', borderRadius: '4px', cursor: 'pointer', letterSpacing: '1px',
               }}>
                 Sign In
               </button>
               <button onClick={() => navigate('/register')} style={{
-                background: '#4488ff', border: 'none', color: '#fff',
+                background: 'var(--accent)', border: 'none', color: '#fff',
                 fontSize: '10px', padding: '3px 8px', borderRadius: '4px', cursor: 'pointer', letterSpacing: '1px',
               }}>
                 Register
@@ -125,11 +125,11 @@ function NavBtn({ active, onClick, children }: { active: boolean; onClick: () =>
       onClick={onClick}
       style={{
         background: 'none', border: 'none',
-        color: active ? '#fff' : '#667',
+        color: active ? 'var(--text-0)' : 'var(--text-2)',
         fontSize: '12px', fontWeight: active ? 600 : 400,
         letterSpacing: '1px', cursor: 'pointer',
         padding: '4px 0',
-        borderBottom: active ? '2px solid #4488ff' : '2px solid transparent',
+        borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
       }}
     >
       {children}
@@ -163,11 +163,11 @@ function formatMissionTime(seconds: number): string {
 
 function statusInfo(state: SimulationState) {
   switch (state) {
-    case 'connecting': return { bg: 'rgba(255,170,0,0.15)', dot: '#ffaa00', label: 'CONNECTING' };
-    case 'running': return { bg: 'rgba(68,255,68,0.1)', dot: '#44ff44', label: 'LIVE' };
-    case 'complete': return { bg: 'rgba(68,136,255,0.1)', dot: '#4488ff', label: 'COMPLETE' };
-    case 'failed': return { bg: 'rgba(255,68,68,0.1)', dot: '#ff4444', label: 'FAILED' };
-    default: return { bg: 'rgba(136,136,136,0.1)', dot: '#888', label: 'IDLE' };
+    case 'connecting': return { bg: 'var(--amber-dim)', dot: 'var(--amber)', label: 'CONNECTING' };
+    case 'running': return { bg: 'var(--green-dim)', dot: 'var(--green)', label: 'LIVE' };
+    case 'complete': return { bg: 'var(--glow-accent)', dot: 'var(--accent)', label: 'COMPLETE' };
+    case 'failed': return { bg: 'var(--red-dim)', dot: 'var(--red)', label: 'FAILED' };
+    default: return { bg: 'rgba(136,136,136,0.1)', dot: 'var(--text-2)', label: 'IDLE' };
   }
 }
 

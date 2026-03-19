@@ -65,19 +65,19 @@ export default function SimulationHistory({ onReplay }: SimulationHistoryProps) 
           gap: '10px',
           marginBottom: '20px',
         }}>
-          <StatCard label="TOTAL LAUNCHES" value={String(simulations.length)} color="#4488ff" />
-          <StatCard label="ORBITS ACHIEVED" value={String(successCount)} color="#22aa44" />
-          <StatCard label="FAILED" value={String(failCount)} color="#ff4444" />
-          <StatCard label="SUCCESS RATE" value={`${successRate}%`} color={parseFloat(successRate) >= 50 ? '#22aa44' : '#ff8844'} />
+          <StatCard label="TOTAL LAUNCHES" value={String(simulations.length)} color="var(--accent)" />
+          <StatCard label="ORBITS ACHIEVED" value={String(successCount)} color="var(--green)" />
+          <StatCard label="FAILED" value={String(failCount)} color="var(--red)" />
+          <StatCard label="SUCCESS RATE" value={`${successRate}%`} color={parseFloat(successRate) >= 50 ? 'var(--green)' : 'var(--amber)'} />
         </div>
       )}
 
       {loading && (
-        <div style={{ textAlign: 'center', color: '#445', fontSize: '12px', padding: '20px' }}>Loading...</div>
+        <div style={{ textAlign: 'center', color: 'var(--text-3)', fontSize: '12px', padding: '20px' }}>Loading...</div>
       )}
 
       {!loading && simulations.length === 0 && (
-        <div style={{ textAlign: 'center', color: '#445', fontSize: '13px', padding: '40px' }}>
+        <div style={{ textAlign: 'center', color: 'var(--text-3)', fontSize: '13px', padding: '40px' }}>
           No past launches yet. Run a simulation to see results here.
         </div>
       )}
@@ -93,15 +93,15 @@ export default function SimulationHistory({ onReplay }: SimulationHistoryProps) 
               gap: '14px',
               alignItems: 'center',
               padding: '12px 16px',
-              background: '#0a0a16',
-              border: '1px solid #151520',
+              background: 'var(--bg-1)',
+              border: '1px solid var(--border-subtle)',
               borderRadius: '8px',
             }}
           >
             {/* Status dot */}
             <div style={{
               width: 8, height: 8, borderRadius: '50%',
-              background: sim.orbitAchieved ? '#22aa44' : '#ff4444',
+              background: sim.orbitAchieved ? 'var(--green)' : 'var(--red)',
             }} />
 
             {/* Info */}
@@ -110,12 +110,12 @@ export default function SimulationHistory({ onReplay }: SimulationHistoryProps) 
                 <span style={{ fontSize: '14px', fontWeight: 600 }}>{sim.rocketName}</span>
                 <span style={{
                   fontSize: '10px', fontWeight: 600, letterSpacing: '0.5px',
-                  color: sim.orbitAchieved ? '#22aa44' : '#ff4444',
+                  color: sim.orbitAchieved ? 'var(--green)' : 'var(--red)',
                 }}>
                   {sim.orbitAchieved ? 'ORBIT' : 'FAIL'}
                 </span>
               </div>
-              <div style={{ display: 'flex', gap: '16px', fontSize: '11px', color: '#667', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '16px', fontSize: '11px', color: 'var(--text-2)', flexWrap: 'wrap', fontFamily: 'var(--font-mono)' }}>
                 <span>Target: {(sim.targetAltitude / 1000).toFixed(0)} km</span>
                 <span>Time: {fmtTime(sim.finalTime)}</span>
                 <span>Max Alt: {(sim.maxAltitude / 1000).toFixed(1)} km</span>
@@ -132,10 +132,10 @@ export default function SimulationHistory({ onReplay }: SimulationHistoryProps) 
                 disabled={loadingId === sim.id}
                 style={{
                   padding: '5px 14px',
-                  background: 'rgba(68,136,255,0.1)',
-                  border: '1px solid rgba(68,136,255,0.3)',
+                  background: 'var(--glow-accent)',
+                  border: '1px solid rgba(59,130,246,0.3)',
                   borderRadius: '4px',
-                  color: '#4488ff',
+                  color: 'var(--accent)',
                   cursor: 'pointer',
                   fontSize: '11px',
                   fontWeight: 600,
@@ -148,9 +148,9 @@ export default function SimulationHistory({ onReplay }: SimulationHistoryProps) 
                 style={{
                   padding: '5px 8px',
                   background: 'none',
-                  border: '1px solid rgba(255,68,68,0.2)',
+                  border: '1px solid rgba(239,68,68,0.2)',
                   borderRadius: '4px',
-                  color: '#ff4444',
+                  color: 'var(--red)',
                   cursor: 'pointer',
                   fontSize: '10px',
                 }}
@@ -169,12 +169,12 @@ function StatCard({ label, value, color }: { label: string; value: string; color
   return (
     <div style={{
       padding: '12px 14px',
-      background: '#0a0a16',
+      background: 'var(--bg-1)',
       borderRadius: '8px',
-      border: '1px solid #151520',
+      border: '1px solid var(--border-subtle)',
     }}>
-      <div style={{ fontSize: '9px', color: '#556', letterSpacing: '1px', marginBottom: '4px', fontWeight: 600 }}>{label}</div>
-      <div style={{ fontSize: '22px', fontFamily: 'monospace', fontWeight: 700, color }}>{value}</div>
+      <div style={{ fontSize: '9px', color: 'var(--text-2)', letterSpacing: '1px', marginBottom: '4px', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{label}</div>
+      <div style={{ fontSize: '22px', fontFamily: 'var(--font-mono)', fontWeight: 700, color }}>{value}</div>
     </div>
   );
 }
@@ -188,9 +188,10 @@ function fmtTime(seconds: number): string {
 const refreshBtnStyle: React.CSSProperties = {
   padding: '6px 14px',
   background: 'rgba(255,255,255,0.05)',
-  border: '1px solid #1a1a2e',
+  border: '1px solid var(--border)',
   borderRadius: '6px',
-  color: '#667',
+  color: 'var(--text-2)',
   cursor: 'pointer',
   fontSize: '11px',
+  fontFamily: 'var(--font-mono)',
 };

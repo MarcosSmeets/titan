@@ -35,8 +35,9 @@ export default function LoginPage({ onLogin, onNavigateRegister }: Props) {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 'calc(100vh - 48px)', padding: '24px' }}>
       <form onSubmit={handleSubmit} style={formStyle}>
-        <h2 style={{ margin: '0 0 8px', fontSize: '20px', letterSpacing: '2px', color: '#fff' }}>SIGN IN</h2>
-        <p style={{ margin: '0 0 24px', fontSize: '12px', color: '#667' }}>Access your Titan account</p>
+        <div style={{ width: '100%', height: '2px', background: 'linear-gradient(90deg, transparent, var(--accent), transparent)', marginBottom: '24px', borderRadius: '1px' }} />
+        <h2 style={{ margin: '0 0 8px', fontSize: '20px', letterSpacing: '2px', color: 'var(--text-0)', fontFamily: 'var(--font-mono)' }}>SIGN IN</h2>
+        <p style={{ margin: '0 0 24px', fontSize: '12px', color: 'var(--text-2)' }}>Access your Titan account</p>
 
         {error && <div style={errorStyle}>{error}</div>}
 
@@ -64,7 +65,7 @@ export default function LoginPage({ onLogin, onNavigateRegister }: Props) {
           {loading ? 'Signing in...' : 'Sign In'}
         </button>
 
-        <p style={{ margin: '16px 0 0', fontSize: '12px', color: '#667', textAlign: 'center' }}>
+        <p style={{ margin: '16px 0 0', fontSize: '12px', color: 'var(--text-2)', textAlign: 'center' }}>
           Don't have an account?{' '}
           <span onClick={onNavigateRegister} style={linkStyle}>Create one</span>
         </p>
@@ -74,8 +75,8 @@ export default function LoginPage({ onLogin, onNavigateRegister }: Props) {
 }
 
 const formStyle: React.CSSProperties = {
-  background: '#0d0d1a',
-  border: '1px solid #1a1a2e',
+  background: 'var(--bg-2)',
+  border: '1px solid var(--border)',
   borderRadius: '8px',
   padding: '32px',
   width: '100%',
@@ -84,21 +85,22 @@ const formStyle: React.CSSProperties = {
 
 const labelStyle: React.CSSProperties = {
   fontSize: '11px',
-  color: '#889',
+  color: 'var(--text-1)',
   letterSpacing: '1px',
   fontWeight: 600,
   marginBottom: '4px',
   display: 'block',
+  fontFamily: 'var(--font-mono)',
 };
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '10px 12px',
   marginBottom: '16px',
-  background: '#08080f',
-  border: '1px solid #1a1a2e',
+  background: 'var(--bg-0)',
+  border: '1px solid var(--border)',
   borderRadius: '4px',
-  color: '#fff',
+  color: 'var(--text-0)',
   fontSize: '14px',
   outline: 'none',
   boxSizing: 'border-box',
@@ -107,7 +109,7 @@ const inputStyle: React.CSSProperties = {
 const buttonStyle: React.CSSProperties = {
   width: '100%',
   padding: '10px',
-  background: '#4488ff',
+  background: 'var(--accent)',
   color: '#fff',
   border: 'none',
   borderRadius: '4px',
@@ -115,11 +117,12 @@ const buttonStyle: React.CSSProperties = {
   fontWeight: 600,
   cursor: 'pointer',
   letterSpacing: '1px',
+  fontFamily: 'var(--font-mono)',
 };
 
 const errorStyle: React.CSSProperties = {
-  background: '#2a0a0a',
-  border: '1px solid #ff4444',
+  background: 'var(--red-dim)',
+  border: '1px solid var(--red)',
   borderRadius: '4px',
   padding: '8px 12px',
   marginBottom: '16px',
@@ -128,7 +131,7 @@ const errorStyle: React.CSSProperties = {
 };
 
 const linkStyle: React.CSSProperties = {
-  color: '#4488ff',
+  color: 'var(--accent)',
   cursor: 'pointer',
   textDecoration: 'underline',
 };

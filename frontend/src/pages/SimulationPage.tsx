@@ -46,11 +46,11 @@ function quatToEuler(w: number, x: number, y: number, z: number) {
 
 function statusInfo(state: SimulationState) {
   switch (state) {
-    case 'connecting': return { bg: 'rgba(255,170,0,0.15)', dot: '#ffaa00', label: 'CONNECTING' };
-    case 'running': return { bg: 'rgba(68,255,68,0.1)', dot: '#44ff44', label: 'LIVE' };
-    case 'complete': return { bg: 'rgba(68,136,255,0.1)', dot: '#4488ff', label: 'COMPLETE' };
-    case 'failed': return { bg: 'rgba(255,68,68,0.1)', dot: '#ff4444', label: 'FAILED' };
-    default: return { bg: 'rgba(136,136,136,0.1)', dot: '#888', label: 'IDLE' };
+    case 'connecting': return { bg: 'var(--amber-dim)', dot: 'var(--amber)', label: 'CONNECTING' };
+    case 'running': return { bg: 'var(--green-dim)', dot: 'var(--green)', label: 'LIVE' };
+    case 'complete': return { bg: 'var(--glow-accent)', dot: 'var(--accent)', label: 'COMPLETE' };
+    case 'failed': return { bg: 'var(--red-dim)', dot: 'var(--red)', label: 'FAILED' };
+    default: return { bg: 'rgba(136,136,136,0.1)', dot: 'var(--text-2)', label: 'IDLE' };
   }
 }
 
@@ -143,7 +143,7 @@ function renderMccChart(type: string, data: any[], stageTimes: number[], compDat
   }
 
   const commonProps = { data: mergedData, margin: { top: 8, right: 12, bottom: 0, left: 0 } };
-  const ttStyle: React.CSSProperties = { background: '#0a0a18', border: '1px solid #1a1a2a', fontSize: '10px', borderRadius: '3px' };
+  const ttStyle: React.CSSProperties = { background: 'var(--bg-1)', border: '1px solid var(--border)', fontSize: '10px', borderRadius: '3px' };
 
   switch (type) {
     case 'altitude':
@@ -223,7 +223,7 @@ function EditorField({ label, value, onChange, step }: {
 }) {
   return (
     <div style={{ marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
-      <label style={{ fontSize: '9px', color: '#445', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{label}</label>
+      <label style={{ fontSize: '9px', color: 'var(--text-3)', letterSpacing: '0.5px', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)' }}>{label}</label>
       <input
         type="number"
         value={typeof value === 'number' ? (Number.isInteger(value) ? value : parseFloat(value.toFixed(2))) : value}
@@ -533,7 +533,7 @@ export default function SimulationPageComponent() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <span style={{ fontSize: '10px', letterSpacing: '3px', color: 'var(--text-3)', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>TITAN MCC</span>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: '#dde' }}>{rocketName || 'Simulation'}</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-0)' }}>{rocketName || 'Simulation'}</span>
           {orbitResult && (
             <span style={{
               padding: '2px 8px', borderRadius: '3px', fontSize: '10px', fontWeight: 700, letterSpacing: '1px',
@@ -724,8 +724,8 @@ export default function SimulationPageComponent() {
             {hasCustomStages ? (
               <div style={{ display: 'flex', gap: '10px', overflowX: 'auto' }}>
                 {editStages.map((stage, i) => (
-                  <div key={i} style={{ flex: '1 0 180px', padding: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid #151520', borderRadius: '8px' }}>
-                    <div style={{ fontSize: '10px', color: '#4488ff', letterSpacing: '1.5px', fontWeight: 600, marginBottom: '6px' }}>STAGE {i + 1}</div>
+                  <div key={i} style={{ flex: '1 0 180px', padding: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-subtle)', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '10px', color: 'var(--accent)', letterSpacing: '1.5px', fontWeight: 600, marginBottom: '6px', fontFamily: 'var(--font-mono)' }}>STAGE {i + 1}</div>
                     <EditorField label="Dry Mass (kg)" value={stage.dryMass} onChange={v => updateStage(i, 'dryMass', v)} />
                     <EditorField label="Fuel Mass (kg)" value={stage.fuelMass} onChange={v => updateStage(i, 'fuelMass', v)} />
                     <EditorField label="Burn Rate (kg/s)" value={stage.burnRate} onChange={v => updateStage(i, 'burnRate', v)} />
@@ -737,9 +737,9 @@ export default function SimulationPageComponent() {
                 ))}
               </div>
             ) : (
-              <div style={{ fontSize: '12px', color: '#556', padding: '8px 0' }}>
+              <div style={{ fontSize: '12px', color: 'var(--text-2)', padding: '8px 0' }}>
                 This is a preset rocket. To edit parameters, first launch a custom rocket from the Rocket Builder, then modify it here.
-                <br /><span style={{ fontSize: '11px', color: '#445' }}>You can still change the target orbit and re-launch with different altitude.</span>
+                <br /><span style={{ fontSize: '11px', color: 'var(--text-3)' }}>You can still change the target orbit and re-launch with different altitude.</span>
               </div>
             )}
           </div>
@@ -764,7 +764,7 @@ export default function SimulationPageComponent() {
               </div>
             )}
             {savedSims.length === 0 ? (
-              <div style={{ fontSize: '12px', color: '#445' }}>No saved simulations found.</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-3)' }}>No saved simulations found.</div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '6px', maxHeight: '300px', overflowY: 'auto' }}>
                 {savedSims.map(sim => {
@@ -775,12 +775,12 @@ export default function SimulationPageComponent() {
                       disabled={isLoading || (!isSelected && comparisons.length >= 5)}
                       style={{
                         padding: '8px 10px', background: isSelected ? 'rgba(170,68,255,0.08)' : 'rgba(255,255,255,0.02)',
-                        border: isSelected ? '1px solid rgba(170,68,255,0.4)' : '1px solid #151520',
+                        border: isSelected ? '1px solid rgba(170,68,255,0.4)' : '1px solid var(--border-subtle)',
                         borderRadius: '6px', cursor: isLoading ? 'wait' : 'pointer', textAlign: 'left', color: '#fff',
                         opacity: (!isSelected && comparisons.length >= 5) ? 0.4 : 1,
                       }}>
                       <div style={{ fontSize: '12px', fontWeight: 600 }}>{sim.rocketName}</div>
-                      <div style={{ fontSize: '10px', color: '#556', marginTop: '2px' }}>
+                      <div style={{ fontSize: '10px', color: 'var(--text-2)', marginTop: '2px' }}>
                         {sim.orbitAchieved ? 'Orbit' : 'No orbit'} &middot; Alt {(sim.maxAltitude / 1000).toFixed(0)} km
                       </div>
                       {isLoading && <div style={{ fontSize: '9px', color: '#aa44ff', marginTop: '2px' }}>Loading...</div>}
@@ -797,7 +797,7 @@ export default function SimulationPageComponent() {
         <div style={modalOverlayStyle} onClick={() => setShowAdvisor(false)}>
           <div style={{
             position: 'fixed', top: 0, right: 0, bottom: 0, width: '380px',
-            background: '#0a0a14', borderLeft: '1px solid #1a1a2e',
+            background: 'var(--bg-1)', borderLeft: '1px solid var(--border)',
             overflowY: 'auto', padding: '16px', zIndex: 1001,
           }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -822,7 +822,7 @@ export default function SimulationPageComponent() {
 // --- Styles ---
 const editorInputStyle: React.CSSProperties = { width: '70px', padding: '4px 8px', background: 'var(--bg-0)', border: '1px solid var(--border)', borderRadius: '5px', color: 'var(--text-0)', fontSize: '11px', fontFamily: 'var(--font-mono)', textAlign: 'right' };
 const relaunchBtnStyle: React.CSSProperties = { padding: '8px 20px', background: 'linear-gradient(135deg, #ff3333, #cc2200)', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 700, fontSize: '12px', cursor: 'pointer', letterSpacing: '2px', boxShadow: '0 2px 10px rgba(255,50,50,0.3)' };
-const advisorBoxStyle: React.CSSProperties = { background: '#0a0a16', borderRadius: '8px', padding: '12px 14px', border: '1px solid #151520' };
+const advisorBoxStyle: React.CSSProperties = { background: 'var(--bg-1)', borderRadius: '8px', padding: '12px 14px', border: '1px solid var(--border-subtle)' };
 const mccPanelStyle: React.CSSProperties = { background: 'var(--bg-1)', borderBottom: '1px solid var(--border-subtle)' };
 const mccDataGridStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(105px, 1fr))', gap: '8px 14px' };
 const mccHeaderBtnStyle: React.CSSProperties = { padding: '5px 12px', background: 'transparent', border: '1px solid rgba(59,130,246,0.2)', borderRadius: '5px', color: 'var(--accent)', cursor: 'pointer', fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 600, letterSpacing: '0.5px', transition: 'all 0.15s' };
