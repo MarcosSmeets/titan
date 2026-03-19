@@ -106,6 +106,7 @@ extern "C"
 
     TITAN_API TitanSim *titan_create_simulation(TitanSimConfig config);
     TITAN_API void titan_add_stage(TitanSim *sim, TitanStageConfig stage);
+    TITAN_API void titan_finalize_vehicle(TitanSim *sim);
     TITAN_API TitanTelemetry titan_step(TitanSim *sim);
     TITAN_API TitanTelemetry titan_get_telemetry(TitanSim *sim);
     TITAN_API void titan_destroy(TitanSim *sim);

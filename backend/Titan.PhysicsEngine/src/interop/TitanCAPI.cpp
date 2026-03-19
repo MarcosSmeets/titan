@@ -179,9 +179,6 @@ extern "C"
             stage.referenceArea,
             stage.dragCoefficient));
 
-        sim->simulation->SetVehicle(std::move(sim->vehicleRef));
-        sim->vehicleRef = nullptr;
-
         auto body = sim->simulation->GetBody();
 
         if (sim->config.useMachCd)
@@ -196,6 +193,15 @@ extern "C"
                         *atmosphere,
                         body.radius));
             }
+        }
+    }
+
+    TITAN_API void titan_finalize_vehicle(TitanSim *sim)
+    {
+        if (sim && sim->vehicleRef)
+        {
+            sim->simulation->SetVehicle(std::move(sim->vehicleRef));
+            sim->vehicleRef = nullptr;
         }
     }
 
