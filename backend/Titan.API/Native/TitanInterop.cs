@@ -93,6 +93,9 @@ public static class TitanInterop
     public static extern void titan_add_stage(IntPtr sim, TitanStageConfig stage);
 
     [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void titan_finalize_vehicle(IntPtr sim);
+
+    [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
     public static extern TitanTelemetry titan_step(IntPtr sim);
 
     [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]

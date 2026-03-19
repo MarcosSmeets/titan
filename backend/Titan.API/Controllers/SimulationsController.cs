@@ -80,6 +80,8 @@ public class SimulationsController : ControllerBase
             Dt = request.Dt,
             IntegratorType = request.IntegratorType,
             GuidanceType = request.GuidanceType,
+            CompletionMinPeriapsis = request.TargetAltitude * 0.9,
+            CompletionMaxEccentricity = request.TargetAltitude > 1_000_000 ? 0.1 : 0.02,
             Rk45Atol = 1e-8,
             Rk45Rtol = 1e-6,
             Rk45Hmin = 1e-6,
@@ -101,6 +103,8 @@ public class SimulationsController : ControllerBase
                     DragCoefficient = stage.DragCoefficient
                 });
             }
+
+            TitanInterop.titan_finalize_vehicle(sim);
 
             var result = new SimulationResult
             {

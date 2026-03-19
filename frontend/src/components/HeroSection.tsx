@@ -62,7 +62,7 @@ export default function HeroSection({ rockets, onLaunch, onReplay, onBuildCustom
       targetAltitude: targetAlt * 1000,
       maxG: 4.0,
       dt: 0.05,
-      duration: 900,
+      duration: Math.max(900, Math.min(7200, targetAlt * 3)),
       integratorType: 2,
       guidanceType: 0,
       timeWarp: 50,
